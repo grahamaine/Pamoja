@@ -6,21 +6,22 @@
 
 **Live demo:** https://pamoja-solana.vercel.app (Solana devnet)
 
-> Status: early prototype for the Encode Club Solana Hackathon 2026. The interface, payment API routes and the first on-chain instruction (`create_job`) exist. The escrow instructions that move money (`fund_job`, `release`, `cancel`, `refund`) are still being written, and the dashboard shows demo data.
+> Status: prototype for the Encode Club Solana Hackathon 2026. The escrow program is complete (`create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`) with 17 passing tests, and the dashboard and crypto checkout use real devnet jobs. The SMS confirmation service is built and tested end to end, and switches on once its Upstash and Africa's Talking accounts are set up; until then the site runs in demo mode, where customers confirm their own jobs. Mobile money and card routes are written but not yet sandbox-tested.
 
 ## How it works
 
 1. **Lock.** The customer's payment goes into a vault owned by the Solana program.
 2. **Serve.** The provider does the job or delivers the order.
 3. **Confirm.** The customer gets an SMS like `PMJ-HAIR-483920` (a service reference plus a 6-digit code). A confirmation service checks it and signs the release.
-4. **Safety nets.** The customer can cancel before funding, or reclaim the money after the deadline.
+4. **Deadline.** Up to the job's deadline the provider can be paid; after it, only the customer can take the money back. The two never overlap. Before paying in, the customer can cancel.
+5. **Clean up.** Finished jobs can be closed to return their rent to the customer.
 
 More detail: [docs/how-it-works.md](docs/how-it-works.md).
 
 ## What is in the app
 
 - Services and store categories (beauty, repairs, cleaning, construction, rides, food, delivery, shops and more), each with a job reference code.
-- Business dashboard preview (escrow balance, payouts, provider levels, embeddable "Pay with Pamoja" button).
+- Business dashboard with live jobs from devnet (escrow balance, payouts, provider levels, embeddable "Pay with Pamoja" button). Providers see whether each job is in real USDC and confirmed by the Pamoja service before they start work.
 - Wallet connection: Phantom, Solflare and WalletConnect.
 - Payment routes for MTN MoMo, Airtel Money and Pesapal (card, bank, mobile money), plus a crypto option.
 - Supported-chains logo slideshow, mobile-first layout, Oswald typography.
@@ -37,7 +38,7 @@ More detail: [docs/how-it-works.md](docs/how-it-works.md).
 ## Repository layout
 
 ```
-counter-program/   Anchor program (Job account, create_job, starter counter)
+program/           Anchor program `pamoja` (Job account, six instructions, tests)
 frontend/          Vite + React app and the /api payment routes
 brand/             Logo, thumbnail and banner
 docs/              Specs and guides
@@ -55,8 +56,9 @@ npm run dev
 
 ```bash
 # Program (use WSL on Windows; Solana and Anchor are installed there)
-cd counter-program
+cd program
 anchor build
+anchor test --validator legacy     # 17 tests on a local validator
 ```
 
 Environment variables are listed in [`frontend/.env.example`](frontend/.env.example). Never commit real keys: payment credentials belong in server-side environment variables only.
@@ -71,13 +73,17 @@ Environment variables are listed in [`frontend/.env.example`](frontend/.env.exam
 
 ## Roadmap
 
-1. ✅ Escrow program: `create_job`, `fund_job`, `release`, `cancel`, `refund`, with tests (live on devnet).
-2. ✅ Dashboard and crypto checkout connected to real on-chain jobs.
-3. ✅ Confirmation service built and tested (SMS code, wallet-signed request, attempt limits). Needs Upstash and Africa's Talking accounts to switch on.
-4. Server step that funds the escrow after a confirmed mobile money or card payment.
-5. Sandbox testing of MTN, Airtel and Pesapal, then production onboarding.
+1. ✅ Escrow program: `create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`, with non-overlapping deadline windows and 17 tests.
+2. ✅ Dashboard and crypto checkout connected to real on-chain jobs, with a provider-side trust badge.
+3. ✅ Confirmation service built and tested end to end (SMS code, wallet-signed request, attempt limits, deadline and fee-balance checks). Needs Upstash and Africa's Talking accounts to switch on.
+4. Provider "delivered" step with a dispute window, so a customer cannot withhold the code and wait out the deadline.
+5. Server step that funds the escrow after a confirmed mobile money or card payment.
+6. Sandbox testing of MTN, Airtel and Pesapal, then production onboarding.
 
 ## Honest limits
+
+- A customer who receives the service can refuse to share the code and refund after the deadline. The deadline rule prevents release and refund from racing, but there is no dispute process yet (roadmap item 4).
+- The customer chooses the token and the confirmer for each job. That cannot take money from a provider, but it can leave them unpaid, so the dashboard tells providers when a job is not in USDC or not confirmed by the Pamoja service.
 
 - Confirmation by SMS code relies on a trusted confirmation service, because a 6-digit code cannot be safely verified on-chain. A wallet-signed confirmation is planned as a fallback.
 - The payment routes were written from the providers' public documentation and have not yet been run against live sandbox credentials.

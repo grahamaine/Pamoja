@@ -8,12 +8,12 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { CounterProgram } from "../target/types/counter_program";
+import { Pamoja } from "../target/types/pamoja";
 
 describe("refund", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const program = anchor.workspace.counterProgram as Program<CounterProgram>;
+  const program = anchor.workspace.pamoja as Program<Pamoja>;
   const customer = (provider.wallet as anchor.Wallet).payer;
 
   const providerWallet = anchor.web3.Keypair.generate();
@@ -78,7 +78,7 @@ describe("refund", () => {
     } catch (e) {
       message = String(e);
     }
-    assert.match(message, /HasOne|has_one|ConstraintHasOne|2001/i);
+    assert.match(message, /NotCustomer|HasOne|2001/i);
   });
 
   it("returns the money to the customer after the deadline", async () => {
@@ -88,19 +88,22 @@ describe("refund", () => {
 
     const customerAccount = await getAccount(provider.connection, customerToken);
     assert.equal(Number(customerAccount.amount), START); // all of it is back
-    const vaultAccount = await getAccount(provider.connection, vault);
-    assert.equal(Number(vaultAccount.amount), 0);
+    assert.isNull(await provider.connection.getAccountInfo(vault), "vault is closed and its rent returned");
     const jobAccount = await program.account.job.fetch(job);
     assert.deepEqual(jobAccount.status, { refunded: {} });
   });
 
   it("rejects a second refund", async () => {
+    const paidOut = Number((await getAccount(provider.connection, customerToken)).amount);
     let message = "";
     try {
       await program.methods.refund().accountsPartial(refundAccounts()).rpc();
     } catch (e) {
       message = String(e);
     }
-    assert.match(message, /WrongStatus|right status/i);
+    // The first call closed the vault, so the second fails before it even reaches the status check.
+    assert.match(message, /AccountNotInitialized|WrongStatus/);
+    const after = await getAccount(provider.connection, customerToken);
+    assert.equal(Number(after.amount), paidOut, "no second payout");
   });
 });

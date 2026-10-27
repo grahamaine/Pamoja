@@ -1,10 +1,10 @@
 {
   "address": "9dLzUWtKppSVHsBBAAea7nqhWUy2pzY3E19PrnGdP2Q4",
   "metadata": {
-    "name": "counter_program",
+    "name": "pamoja",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Created with Anchor"
+    "description": "Pamoja: pay-when-done service escrow on Solana"
   },
   "instructions": [
     {
@@ -22,6 +22,56 @@
       "accounts": [
         {
           "name": "customer",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "Job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "Job"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_job",
+      "discriminator": [
+        90,
+        100,
+        180,
+        200,
+        200,
+        163,
+        120,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "customer",
+          "writable": true,
           "signer": true,
           "relations": [
             "job"
@@ -223,54 +273,6 @@
       "args": []
     },
     {
-      "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "counter",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  110,
-                  99,
-                  104,
-                  111,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "refund",
       "discriminator": [
         2,
@@ -285,6 +287,7 @@
       "accounts": [
         {
           "name": "customer",
+          "writable": true,
           "signer": true,
           "relations": [
             "job"
@@ -404,6 +407,16 @@
           }
         },
         {
+          "name": "customer",
+          "docs": [
+            "Receives the vault's rent back. Not a signer: the customer does not need to be present."
+          ],
+          "writable": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
           "name": "mint",
           "relations": [
             "job"
@@ -444,19 +457,6 @@
   ],
   "accounts": [
     {
-      "name": "Counter",
-      "discriminator": [
-        255,
-        176,
-        4,
-        245,
-        188,
-        253,
-        124,
-        25
-      ]
-    },
-    {
       "name": "Job",
       "discriminator": [
         75,
@@ -473,75 +473,65 @@
   "errors": [
     {
       "code": 6000,
-      "name": "Overflow",
-      "msg": "Counter overflow"
-    },
-    {
-      "code": 6001,
       "name": "InvalidAmount",
       "msg": "Amount must be greater than zero"
     },
     {
-      "code": 6002,
+      "code": 6001,
       "name": "DeadlineInPast",
       "msg": "Deadline must be in the future"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "WrongStatus",
       "msg": "Job is not in the right status for this action"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "InvalidReference",
       "msg": "Reference must be 2-8 uppercase letters or digits"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "NotAttestor",
       "msg": "Only the confirmation service can release funds"
     },
     {
-      "code": 6006,
-      "name": "NotProvider",
-      "msg": "Only the provider can do this"
-    },
-    {
-      "code": 6007,
+      "code": 6005,
       "name": "NotCustomer",
       "msg": "Only the customer can do this"
     },
     {
-      "code": 6008,
+      "code": 6006,
+      "name": "WrongMint",
+      "msg": "The token does not match this job"
+    },
+    {
+      "code": 6007,
       "name": "TooEarly",
       "msg": "The deadline has not passed yet"
+    },
+    {
+      "code": 6008,
+      "name": "DeadlinePassed",
+      "msg": "The deadline has passed; the customer can now reclaim the payment"
+    },
+    {
+      "code": 6009,
+      "name": "JobNotFinished",
+      "msg": "The job is still open and cannot be closed"
     }
   ],
   "types": [
     {
-      "name": "Counter",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "count",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "Job",
       "docs": [
-        "One service booking: a customer pays a provider once the work is confirmed."
+        "One service booking: a customer pays a provider once the work is confirmed.",
+        "",
+        "Timeline:",
+        "now <= deadline : only `release` can move the money (to the provider)",
+        "now >  deadline : only `refund` can move the money (back to the customer)",
+        "The two windows never overlap, so release and refund can never race each other."
       ],
       "type": {
         "kind": "struct",
@@ -624,9 +614,9 @@
       "value": "\"job\""
     },
     {
-      "name": "SEED",
+      "name": "VAULT_SEED",
       "type": "string",
-      "value": "\"anchor\""
+      "value": "\"vault\""
     }
   ]
 }

@@ -8,12 +8,12 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { CounterProgram } from "../target/types/counter_program";
+import { Pamoja } from "../target/types/pamoja";
 
 describe("fund_job", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const program = anchor.workspace.counterProgram as Program<CounterProgram>;
+  const program = anchor.workspace.pamoja as Program<Pamoja>;
   const customer = (provider.wallet as anchor.Wallet).payer;
 
   const providerWallet = anchor.web3.Keypair.generate(); // the service provider
@@ -77,5 +77,28 @@ describe("fund_job", () => {
     }
     // the vault already exists, so the account cannot be created a second time
     assert.match(message, /already in use|WrongStatus/);
+  });
+
+  it("rejects funding after the deadline", async () => {
+    const lateId = new BN(9);
+    const [lateJob] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("job"), customer.publicKey.toBuffer(), lateId.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    await program.methods
+      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 3))
+      .rpc();
+    await new Promise((r) => setTimeout(r, 6000));
+
+    let message = "";
+    try {
+      await program.methods
+        .fundJob()
+        .accountsPartial({ job: lateJob, mint, customerTokenAccount: customerToken, tokenProgram: TOKEN_PROGRAM_ID })
+        .rpc();
+    } catch (e) {
+      message = String(e);
+    }
+    assert.match(message, /DeadlinePassed/);
   });
 });

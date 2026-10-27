@@ -1,13 +1,5 @@
 use anchor_lang::prelude::*;
 
-#[account]
-#[derive(InitSpace)]
-pub struct Counter {
-    pub authority: Pubkey,
-    pub count: u64,
-    pub bump: u8,
-}
-
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, InitSpace)]
 pub enum JobStatus {
     Created,   // job exists, nothing deposited yet
@@ -17,7 +9,19 @@ pub enum JobStatus {
     Refunded,  // customer got the money back
 }
 
+impl JobStatus {
+    /// Nothing more can happen to the job; the customer may close it to reclaim its rent.
+    pub fn is_final(self) -> bool {
+        matches!(self, JobStatus::Released | JobStatus::Cancelled | JobStatus::Refunded)
+    }
+}
+
 /// One service booking: a customer pays a provider once the work is confirmed.
+///
+/// Timeline:
+///   now <= deadline : only `release` can move the money (to the provider)
+///   now >  deadline : only `refund` can move the money (back to the customer)
+/// The two windows never overlap, so release and refund can never race each other.
 #[account]
 #[derive(InitSpace)]
 pub struct Job {
@@ -28,7 +32,7 @@ pub struct Job {
     #[max_len(8)]
     pub reference: String,   // public goods/service abbreviation, e.g. "HAIR"
     pub attestor: Pubkey,    // confirmation service that checks the SMS code off-chain
-    pub deadline: i64,       // unix time after which the customer can reclaim funds
+    pub deadline: i64,       // last moment release is allowed; refund opens right after it
     pub job_id: u64,         // lets one customer have many jobs
     pub status: JobStatus,
     pub bump: u8,

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { BN } from '@anchor-lang/core'
 import { PublicKey } from '@solana/web3.js'
 import { CircleCheck, CircleX, Loader2 } from 'lucide-react'
-import { useCounterProgram } from '../useCounter'
+import { usePamojaProgram } from '../useProgram'
 import { friendly } from '../useEscrow'
 import { useConfirmService } from '../useConfirmService'
 import { createAndFundJob, toBaseUnits, type EscrowProgram } from '../lib/escrow'
@@ -11,7 +11,7 @@ import { CATEGORIES } from './Services'
 
 // Pay with crypto: creates the job and locks the payment in the escrow vault.
 export function CryptoPay() {
-  const ctx = useCounterProgram()
+  const ctx = usePamojaProgram()
   const service = useConfirmService()
   const [reference, setReference] = useState('HAIR')
   const [provider, setProvider] = useState('')
@@ -70,12 +70,13 @@ export function CryptoPay() {
         <label>Amount ({STABLE_SYMBOL})
           <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} disabled={busy} />
         </label>
-        <label>Refund available after (hours)
+        <label>Deadline (hours from now)
           <input inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} disabled={busy} />
         </label>
       </div>
 
       <p className="crypto-note">
+        The provider must be confirmed before the deadline; after it, only you can take the money back.{' '}
         You need devnet SOL for fees and test {STABLE_SYMBOL} in this wallet:{' '}
         <a href="https://faucet.solana.com" target="_blank" rel="noreferrer">SOL faucet</a> ·{' '}
         <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">USDC faucet</a> (choose Solana Devnet).

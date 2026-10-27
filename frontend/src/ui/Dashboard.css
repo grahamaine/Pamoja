@@ -55,3 +55,8 @@
 .confirm-row input:focus { outline: 2px solid var(--teal); border-color: transparent; }
 .confirm-box .ok { display: block; margin-top: .3rem; color: var(--teal); }
 .confirm-box .note { display: block; margin-top: .3rem; }
+
+/* Provider-side check: real stablecoin + Pamoja confirmation, or a warning */
+.trust { display: inline-flex; align-items: center; gap: .3rem; margin-top: .35rem; padding: .15rem .55rem; border-radius: 999px; font-size: .74rem; font-weight: 600; border: 1px solid var(--border); line-height: 1.3; }
+.trust.ok { color: var(--teal); border-color: rgba(20,241,178,.4); }
+.trust.warn { color: #f5b942; border-color: rgba(245,185,66,.45); }

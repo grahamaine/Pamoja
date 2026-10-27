@@ -14,7 +14,10 @@ A 6-digit code has only 1,000,000 values. If its hash were stored on-chain, anyo
 a fraction of a second and take the money. So the code is only ever known to the customer and the server,
 and the program just checks that the attestor signed.
 
-## Safeguards (all covered by tests)
+## Safeguards
+
+Checked end to end against a local validator by `frontend/scripts/e2e-confirm.mts`.
+
 - Only the **customer** can ask for a code: they sign `Pamoja: send my confirmation code for job <address>`
   with their wallet, and the server checks it against the job's customer.
 - The job must be **funded** and name this service as its attestor.
@@ -22,6 +25,10 @@ and the program just checks that the attestor signed.
 - **5 wrong guesses** lock the code until the customer requests a new one.
 - Guesses are counted *before* they are checked, so parallel requests cannot dodge the limit.
 - The stored value is `sha256(secret : job : code)`. The plain code is never saved or logged.
+- No code is sent or accepted **after the job's deadline**, matching the program's rule.
+- Before signing, the service checks its own wallet has at least **0.01 SOL** (it pays the fee and,
+  if the provider has no token account yet, about 0.002 SOL to create one). If not, it answers 503
+  and gives the provider's try back. `GET /api/confirm/status` shows the balance as `attestorSol`.
 - If the provider never gets the code, the customer can still use **refund** after the deadline.
 
 ## Turning it on (you need three accounts)

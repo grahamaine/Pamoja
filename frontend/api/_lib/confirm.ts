@@ -1,7 +1,7 @@
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto'
 import { AnchorProvider, Program, Wallet } from '@anchor-lang/core'
-import { Connection, Keypair, PublicKey } from '@solana/web3.js'
-import { TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token'
+import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
+import { TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token'
 import nacl from 'tweetnacl'
 import { HttpError, normalisePhone } from './common.js'
 import { IDL } from './idl.js'
@@ -34,6 +34,22 @@ export interface Deps {
 
 const TTL = 60 * 60 * 24 * 60 // keep codes for 60 days
 
+// The attestor wallet pays each release's fee and, when the provider has no token account yet,
+// about 0.002 SOL to create one. Below this balance the service stops and says so, rather than
+// failing halfway with a confusing on-chain error. Top it up from the faucet on devnet.
+export const MIN_ATTESTOR_SOL = 0.01
+
+export async function attestorBalance(d: Pick<Deps, 'connection' | 'attestor'>) {
+  return (await d.connection.getBalance(d.attestor.publicKey, 'confirmed')) / LAMPORTS_PER_SOL
+}
+
+async function tokenProgramFor(d: Deps, mint: PublicKey) {
+  const info = await d.connection.getAccountInfo(mint, 'confirmed')
+  if (info?.owner.equals(TOKEN_2022_PROGRAM_ID)) return TOKEN_2022_PROGRAM_ID
+  if (info?.owner.equals(TOKEN_PROGRAM_ID)) return TOKEN_PROGRAM_ID
+  throw new HttpError(409, 'The job uses a token this service does not recognise')
+}
+
 export const issueMessage = (job: string) => `Pamoja: send my confirmation code for job ${job}`
 
 const program = (d: Deps) =>
@@ -56,6 +72,11 @@ async function loadFundedJob(d: Deps, jobAddress: string) {
   if (!acc) throw new HttpError(404, 'Job not found')
   if (!acc.attestor.equals(d.attestor.publicKey)) throw new HttpError(403, 'This job is not confirmed by the Pamoja service')
   if (Object.keys(acc.status)[0] !== 'funded') throw new HttpError(409, 'The job has not been paid in, or is already finished')
+  // Same rule as the program: release only up to the deadline. After it the money belongs to the
+  // refund path, so there is no point sending or checking a code.
+  if (Math.floor(Date.now() / 1000) > Number(acc.deadline)) {
+    throw new HttpError(409, 'The deadline for this job has passed. The customer can now reclaim the payment.')
+  }
   return { job, acc }
 }
 
@@ -105,17 +126,27 @@ export async function releaseWithCode(d: Deps, input: { job: string; code: strin
     throw new HttpError(400, `Wrong code. ${MAX_TRIES - tries} ${MAX_TRIES - tries === 1 ? 'try' : 'tries'} left.`)
   }
 
-  const providerToken = getAssociatedTokenAddressSync(acc.mint, acc.provider)
+  if ((await attestorBalance(d)) < MIN_ATTESTOR_SOL) {
+    // The code was right, so give the try back: this is our problem, not the provider's.
+    await d.store.del(`tries:${input.job}`)
+    throw new HttpError(503, 'The confirmation service is out of network fees. Your code is still valid; please try again later.')
+  }
+
+  const tokenProgram = await tokenProgramFor(d, acc.mint)
+  const providerToken = getAssociatedTokenAddressSync(acc.mint, acc.provider, false, tokenProgram)
   const signature: string = await program(d)
     .methods.release()
     .accountsPartial({
       attestor: d.attestor.publicKey,
       job,
+      customer: acc.customer, // gets the vault's rent back
       mint: acc.mint,
       providerTokenAccount: providerToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram,
     })
-    .preInstructions([createAssociatedTokenAccountIdempotentInstruction(d.attestor.publicKey, providerToken, acc.provider, acc.mint)])
+    .preInstructions([
+      createAssociatedTokenAccountIdempotentInstruction(d.attestor.publicKey, providerToken, acc.provider, acc.mint, tokenProgram),
+    ])
     .rpc()
 
   await d.store.del(`code:${input.job}`)

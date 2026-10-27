@@ -1,7 +1,7 @@
 # Keep local build and test output out of command-line deploys
-counter-program/.anchor
-counter-program/target
-counter-program/node_modules
+program/.anchor
+program/target
+program/node_modules
 **/test-ledger
 **/node_modules
 .git

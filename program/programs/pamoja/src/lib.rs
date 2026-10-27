@@ -9,15 +9,12 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
+// Same address as the program already on devnet, so existing jobs keep working after an upgrade.
 declare_id!("9dLzUWtKppSVHsBBAAea7nqhWUy2pzY3E19PrnGdP2Q4");
 
 #[program]
-pub mod counter_program {
+pub mod pamoja {
     use super::*;
-
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
-    }
 
     pub fn create_job(
         ctx: Context<CreateJob>,
@@ -31,11 +28,12 @@ pub mod counter_program {
     ) -> Result<()> {
         create_job::handler(ctx, job_id, provider, mint, amount, reference, attestor, deadline)
     }
-                pub fn fund_job(ctx: Context<FundJob>) -> Result<()> {
+
+    pub fn fund_job(ctx: Context<FundJob>) -> Result<()> {
         fund_job::handler(ctx)
     }
 
-        pub fn release(ctx: Context<Release>) -> Result<()> {
+    pub fn release(ctx: Context<Release>) -> Result<()> {
         release::handler(ctx)
     }
 
@@ -47,8 +45,7 @@ pub mod counter_program {
         refund::handler(ctx)
     }
 
-    // TODO (you): uncomment once increment.rs is finished.
-    // pub fn increment(ctx: Context<Increment>) -> Result<()> {
-    //     increment::handler(ctx)
-    // }
+    pub fn close_job(ctx: Context<CloseJob>) -> Result<()> {
+        close_job::handler(ctx)
+    }
 }

@@ -3,12 +3,24 @@
 A `Job` is one booking for a service or goods order. Money moves only through the program.
 
 ```
-Created --fund_job--> Funded --release (attestor signs)--> Released
-   |                     |
- cancel              refund (after deadline, customer only)
-   v                     v
-Cancelled             Refunded
+Created --fund_job--> Funded --release (attestor signs, up to the deadline)--> Released
+   |                     |                                                         |
+ cancel              refund (customer, after the deadline)                      close_job
+   v                     v                                                         v
+Cancelled             Refunded --close_job-->  (job deleted, rent back to the customer)
+   |
+ close_job
 ```
+
+## The deadline splits time in two
+
+| | up to the deadline | after the deadline |
+|---|---|---|
+| `fund_job` | allowed | `DeadlinePassed` |
+| `release` | allowed (attestor) | `DeadlinePassed` |
+| `refund` | `TooEarly` | allowed (customer) |
+
+The windows never overlap, so a release and a refund can never race for the same money.
 
 ## Confirmation: reference + 6-digit code, checked off-chain
 
@@ -39,36 +51,45 @@ Orders and deliveries: `FOOD` food and restaurants, `GROC` groceries and produce
 `SHOP` shops and retail, `RIDE` boda and cab rides, `DLVR` courier and freight, `UTIL` utilities and bills,
 `PHAR` pharmacy and tele-health, `GOOD` other goods.
 
-## Already done
-- `Job` + `JobStatus` (`state.rs`): customer, provider, mint, amount, reference, attestor, deadline, status
-- `create_job` (`instructions/create_job.rs`): validates amount, reference format and deadline
+## Instructions (`programs/pamoja/src/instructions/`)
 
-## Yours to write (in this order)
+| Instruction | Signer | Does |
+|---|---|---|
+| `create_job` | customer | Creates the `Job` PDA (`["job", customer, job_id]`). Checks amount > 0, reference format, deadline in the future. |
+| `fund_job` | customer | Creates the vault (`["vault", job]`, owned by the job PDA) and moves `amount` into it. Only before the deadline. |
+| `release` | attestor | Pays the **whole** vault balance to the provider, closes the vault, sends its rent to the customer. Only up to the deadline. |
+| `cancel` | customer | Only while `Created` (nothing to give back). |
+| `refund` | customer | Pays the whole vault back to the customer and closes it. Only after the deadline. |
+| `close_job` | customer | Deletes a `Released`, `Cancelled` or `Refunded` job and returns its rent. Separate from the others so the job stays on-chain as a receipt until the customer chooses. |
 
-### 1. `fund_job` (customer)
-- Accounts: customer (Signer), job (mut, has_one = customer), mint, customer token account,
-  vault token account (PDA, seeds `["vault", job]`, authority = job), token program, system program.
-- Require status `Created`. Transfer `job.amount` customer -> vault (`anchor_spl::token::transfer`).
-  Set status `Funded`. Needs the `anchor-spl` dependency in `programs/counter-program/Cargo.toml`.
+Release and refund pay out the vault's whole balance, not `job.amount`. Anyone can send tokens to a
+vault, and a token account with a balance cannot be closed, so paying out everything means a stray
+deposit can never block the money from moving.
 
-### 2. `release` (attestor)
-- Require status `Funded` and signer == `job.attestor` (else `ErrorCode::NotAttestor`).
-- Transfer the vault balance to the provider's token account, signing as the job PDA
-  (`CpiContext::new_with_signer`). Set status `Released`.
+Constraint failures return named errors: `NotAttestor`, `NotCustomer`, `WrongMint`, `WrongStatus`,
+`TooEarly`, `DeadlinePassed`, `JobNotFinished`. Both classic SPL Token and Token-2022 mints work.
 
-### 3. `cancel` (customer)
-- Only while status is `Created`. Set `Cancelled`.
+## What the provider should check
 
-### 4. `refund` (customer)
-- Require status `Funded` and `Clock::unix_timestamp > job.deadline` (else `TooEarly`).
-- Transfer the vault balance back to the customer. Set `Refunded`.
+The customer chooses the token and the attestor when creating a job. Neither choice lets anyone take
+money from the provider, but either could leave them unpaid: a look-alike token, or an attestor the
+customer controls. The dashboard therefore shows providers a badge on every open job: **Verified**
+when it is in USDC with the Pamoja confirmation service, a warning otherwise. Pinning both on-chain
+(a config account) is possible later; it is not done yet because demo mode relies on customers
+confirming their own jobs while the SMS service is switched off.
 
-## Later
-- Customer-signed confirmation (fallback), arbiter/dispute instruction.
-- The attestor service (SMS sending, code check, rate limiting).
-- Mobile money and bank transfer on-ramp that funds `fund_job` for the customer.
-- Replace demo data in `frontend/src/ui/Dashboard.tsx` with real `Job` accounts.
+## Known limit: the customer can withhold the code
 
-## Tests (`tests/`)
-Per instruction: happy path plus failures (wrong signer, bad reference, refund before deadline,
-double release).
+If the customer gets the service but never hands over the code, they can wait for the deadline and
+refund. The deadline rule stops the two sides racing, but it does not protect the provider from a
+dishonest customer. Planned: a provider "delivered" step that starts a dispute window, after which
+the money releases unless the customer disputes.
+
+## Tests (`program/tests/`)
+
+17 tests, run with `anchor test --validator legacy`: the happy path of each instruction, wrong
+signers, double funding, double release and refund, funding and releasing after the deadline,
+refunding before it, a stray deposit in the vault, and closing open vs finished jobs.
+
+The confirmation service has its own end-to-end check against a local validator:
+`frontend/scripts/e2e-confirm.mts` (see the comment at the top of the file).

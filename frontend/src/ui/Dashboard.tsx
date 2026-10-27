@@ -1,9 +1,11 @@
 import type { ReactElement } from 'react'
-import { Lock, Banknote, CircleCheck, Clock, RefreshCw } from 'lucide-react'
+import { Lock, Banknote, CircleCheck, Clock, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
 import { useEscrow } from '../useEscrow'
 import { useConfirmService } from '../useConfirmService'
 import { ConfirmBox } from './ConfirmBox'
-import { cancelJob, fromBaseUnits, fundJob, refundJob, releaseJob, type JobView } from '../lib/escrow'
+import {
+  canFund, canRefund, canRelease, cancelJob, closeJob, fromBaseUnits, fundJob, isFinal, refundJob, releaseJob, trustOf, type JobView,
+} from '../lib/escrow'
 import { explorer, PROGRAM_ID, STABLE_DECIMALS, STABLE_MINT, STABLE_SYMBOL } from '../lib/config'
 import './Dashboard.css'
 
@@ -20,6 +22,19 @@ function levelFor(completed: number) {
   const idx = LEVELS.reduce((acc, l, i) => (completed >= l.from ? i : acc), 0)
   const next = LEVELS[idx + 1]
   return { current: LEVELS[idx], next, progress: next ? (completed - LEVELS[idx].from) / (next.from - LEVELS[idx].from) : 1 }
+}
+
+/** Shown to the provider on every open job: is this payment real, and who can release it? */
+function TrustBadge({ j, pamojaAttestor }: { j: JobView; pamojaAttestor: string | null }) {
+  const t = trustOf(j, STABLE_MINT, pamojaAttestor)
+  if (t.mintOk && t.confirmer === 'pamoja') {
+    return <span className="trust ok" title={`Locked in ${STABLE_SYMBOL}. Released by the Pamoja SMS service when you enter the customer's code.`}><ShieldCheck size={14} /> Verified: {STABLE_SYMBOL}, Pamoja confirmation</span>
+  }
+  const problems: string[] = []
+  if (!t.mintOk) problems.push(`not ${STABLE_SYMBOL}; check the token before you start`)
+  if (t.confirmer === 'customer') problems.push('the customer confirms it themselves (demo mode)')
+  if (t.confirmer === 'unknown') problems.push('confirmed by an unknown key, not the Pamoja service')
+  return <span className="trust warn" title="Neither case lets anyone take the money from you, but you might not get paid."><TriangleAlert size={14} /> Payment {problems.join('; ')}</span>
 }
 
 const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`
@@ -72,26 +87,34 @@ export function Dashboard() {
     const disabled = busy !== null
     const btns: ReactElement[] = []
 
-    if (isCustomer && j.status === 'created') {
+    if (isCustomer && canFund(j, now)) {
       btns.push(<button key="fund" className="mini primary" disabled={disabled} onClick={() => act(key, () => fundJob(program, me, j))}>Pay in</button>)
+    }
+    if (isCustomer && j.status === 'created') {
       btns.push(<button key="cancel" className="mini" disabled={disabled} onClick={() => act(key, () => cancelJob(program, j))}>Cancel</button>)
     }
-    if (isAttestor && j.status === 'funded') {
+    if (isAttestor && canRelease(j, now)) {
       btns.push(<button key="release" className="mini primary" disabled={disabled} onClick={() => act(key, () => releaseJob(program, me, j))}>Confirm &amp; pay provider</button>)
     }
     if (isCustomer && j.status === 'funded') {
-      const late = now > j.deadline.toNumber()
+      const late = canRefund(j, now)
       btns.push(
         <button key="refund" className="mini" disabled={disabled || !late} title={late ? '' : `Available after ${when(j.deadline.toNumber())}`} onClick={() => act(key, () => refundJob(program, me, j))}>
           {late ? 'Refund' : `Refund after ${when(j.deadline.toNumber())}`}
         </button>,
       )
     }
-    const viaService = service.ready && service.attestor !== null && j.attestor.toBase58() === service.attestor && j.status === 'funded'
+    if (isCustomer && isFinal(j)) {
+      btns.push(<button key="close" className="mini" disabled={disabled} title="Deletes the finished job and returns its rent (about 0.002 SOL) to you" onClick={() => act(key, () => closeJob(program, me, j))}>Close &amp; reclaim rent</button>)
+    }
+    const isProvider = j.provider.equals(me)
+    const viaService = service.ready && service.attestor !== null && j.attestor.toBase58() === service.attestor && canRelease(j, now)
     return (
       <>
+        {isProvider && !isCustomer && (j.status === 'created' || j.status === 'funded') && <TrustBadge j={j} pamojaAttestor={service.attestor} />}
+        {isProvider && j.status === 'funded' && !canRelease(j, now) && <small className="note">The deadline has passed, so this payment can no longer be released to you.</small>}
         {viaService && isCustomer && <ConfirmBox job={key} role="customer" onDone={refresh} />}
-        {viaService && j.provider.equals(me) && <ConfirmBox job={key} role="provider" onDone={refresh} />}
+        {viaService && isProvider && <ConfirmBox job={key} role="provider" onDone={refresh} />}
         <div className="row-actions">{btns}</div>
         {notes[key] && <small className="note">{notes[key]}</small>}
       </>

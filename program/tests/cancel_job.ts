@@ -7,12 +7,12 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { CounterProgram } from "../target/types/counter_program";
+import { Pamoja } from "../target/types/pamoja";
 
 describe("cancel", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const program = anchor.workspace.counterProgram as Program<CounterProgram>;
+  const program = anchor.workspace.pamoja as Program<Pamoja>;
   const customer = (provider.wallet as anchor.Wallet).payer;
 
   const providerWallet = anchor.web3.Keypair.generate();
@@ -72,7 +72,7 @@ describe("cancel", () => {
     } catch (e) {
       message = String(e);
     }
-    assert.match(message, /HasOne|has_one|ConstraintHasOne|2001/i);
+    assert.match(message, /NotCustomer|HasOne|2001/i);
   });
 
   it("rejects cancelling a job that is already funded", async () => {

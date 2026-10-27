@@ -1,11 +1,12 @@
 import { BN, type Program } from '@anchor-lang/core'
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, type Connection } from '@solana/web3.js'
 import {
+  TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from '@solana/spl-token'
-import type { CounterProgram } from '../idl/counter_program'
+import type { Pamoja } from '../idl/pamoja'
 
 // Talks to the Pamoja escrow program. No React or browser code in here.
 
@@ -24,7 +25,7 @@ export type JobView = {
   status: JobStatus
 }
 
-export type EscrowProgram = Program<CounterProgram>
+export type EscrowProgram = Program<Pamoja>
 
 export const jobAddress = (programId: PublicKey, customer: PublicKey, jobId: BN) =>
   PublicKey.findProgramAddressSync(
@@ -48,6 +49,48 @@ export const fromBaseUnits = (amount: BN, decimals = 6) => {
 }
 
 const statusOf = (s: object): JobStatus => Object.keys(s)[0] as JobStatus
+
+const tokenPrograms = new Map<string, PublicKey>()
+
+/** Classic SPL Token or Token-2022, read from who owns the mint account. Cached per mint. */
+export async function tokenProgramFor(connection: Connection, mint: PublicKey): Promise<PublicKey> {
+  const key = mint.toBase58()
+  const cached = tokenPrograms.get(key)
+  if (cached) return cached
+  const info = await connection.getAccountInfo(mint)
+  if (!info) throw new Error('Token mint not found on this network')
+  if (!info.owner.equals(TOKEN_PROGRAM_ID) && !info.owner.equals(TOKEN_2022_PROGRAM_ID)) throw new Error('Not a token mint')
+  tokenPrograms.set(key, info.owner)
+  return info.owner
+}
+
+// The same timing rules the program enforces, so buttons only appear when the action can succeed.
+//   up to the deadline: fund (if not yet funded) and release
+//   after the deadline: refund only
+export const canFund = (j: JobView, now: number) => j.status === 'created' && now <= j.deadline.toNumber()
+export const canRelease = (j: JobView, now: number) => j.status === 'funded' && now <= j.deadline.toNumber()
+export const canRefund = (j: JobView, now: number) => j.status === 'funded' && now > j.deadline.toNumber()
+export const isFinal = (j: JobView) => j.status === 'released' || j.status === 'cancelled' || j.status === 'refunded'
+
+export type Trust = {
+  /** The locked token is the stablecoin Pamoja expects (not some look-alike token). */
+  mintOk: boolean
+  /** Who can release: the Pamoja SMS service, the customer themselves, or an unknown key. */
+  confirmer: 'pamoja' | 'customer' | 'unknown'
+}
+
+/**
+ * What a provider should check before starting work. The program lets the customer pick the token
+ * and the confirmer, so a job can be "funded" with a worthless token or a confirmer only the
+ * customer controls. Neither can steal from the provider, but either can leave them unpaid.
+ */
+export function trustOf(j: JobView, stableMint: PublicKey, pamojaAttestor: string | null): Trust {
+  const attestor = j.attestor.toBase58()
+  return {
+    mintOk: j.mint.equals(stableMint),
+    confirmer: pamojaAttestor && attestor === pamojaAttestor ? 'pamoja' : j.attestor.equals(j.customer) ? 'customer' : 'unknown',
+  }
+}
 
 /** Every job where this wallet is the customer, the provider or the confirmer. */
 export async function listJobs(program: EscrowProgram, me: PublicKey): Promise<JobView[]> {
@@ -78,13 +121,14 @@ export async function createAndFundJob(program: EscrowProgram, me: PublicKey, p:
 }
 
 export async function fundJob(program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address' | 'mint'>) {
+  const tokenProgram = await tokenProgramFor(program.provider.connection, j.mint)
   return program.methods
     .fundJob()
     .accountsPartial({
       job: j.address,
       mint: j.mint,
-      customerTokenAccount: getAssociatedTokenAddressSync(j.mint, me),
-      tokenProgram: TOKEN_PROGRAM_ID,
+      customerTokenAccount: getAssociatedTokenAddressSync(j.mint, me, false, tokenProgram),
+      tokenProgram,
     })
     .rpc()
 }
@@ -92,30 +136,43 @@ export async function fundJob(program: EscrowProgram, me: PublicKey, j: Pick<Job
 export const cancelJob = (program: EscrowProgram, j: Pick<JobView, 'address'>) =>
   program.methods.cancel().accountsPartial({ job: j.address }).rpc()
 
-export const refundJob = (program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address' | 'mint'>) =>
-  program.methods
+/** After the deadline: the money and the vault's rent go back to the customer. */
+export async function refundJob(program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address' | 'mint'>) {
+  const tokenProgram = await tokenProgramFor(program.provider.connection, j.mint)
+  return program.methods
     .refund()
     .accountsPartial({
+      customer: me,
       job: j.address,
       mint: j.mint,
-      customerTokenAccount: getAssociatedTokenAddressSync(j.mint, me),
-      tokenProgram: TOKEN_PROGRAM_ID,
+      customerTokenAccount: getAssociatedTokenAddressSync(j.mint, me, false, tokenProgram),
+      tokenProgram,
     })
     .rpc()
+}
 
-/** Only the job's attestor can release. Creates the provider's token account if it does not exist yet. */
-export async function releaseJob(program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address' | 'mint' | 'provider'>) {
-  const providerToken = getAssociatedTokenAddressSync(j.mint, j.provider)
+/**
+ * Only the job's attestor can release, and only up to the deadline. Pays the provider, returns the
+ * vault's rent to the customer, and creates the provider's token account if it does not exist yet.
+ */
+export async function releaseJob(program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address' | 'mint' | 'provider' | 'customer'>) {
+  const tokenProgram = await tokenProgramFor(program.provider.connection, j.mint)
+  const providerToken = getAssociatedTokenAddressSync(j.mint, j.provider, false, tokenProgram)
   return program.methods
     .release()
     .accountsPartial({
       attestor: me,
       job: j.address,
+      customer: j.customer,
       mint: j.mint,
       providerTokenAccount: providerToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      tokenProgram,
     })
-    .preInstructions([createAssociatedTokenAccountIdempotentInstruction(me, providerToken, j.provider, j.mint)])
+    .preInstructions([createAssociatedTokenAccountIdempotentInstruction(me, providerToken, j.provider, j.mint, tokenProgram)])
     .rpc()
 }
+
+/** Deletes a finished job and returns its rent (about 0.002 SOL) to the customer. */
+export const closeJob = (program: EscrowProgram, me: PublicKey, j: Pick<JobView, 'address'>) =>
+  program.methods.closeJob().accountsPartial({ customer: me, job: j.address }).rpc()
 

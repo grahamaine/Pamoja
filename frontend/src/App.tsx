@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Lock, BriefcaseBusiness, KeyRound, Smartphone, Wallet, ShieldCheck, Store, type LucideIcon } from 'lucide-react'
-import { useCounterProgram } from './useCounter'
+import { usePamojaProgram } from './useProgram'
+import { explorer, PROGRAM_ID } from './lib/config'
 import { ChainMarquee } from './ui/ChainMarquee'
 import { Dashboard } from './ui/Dashboard'
 import { Services } from './ui/Services'
@@ -18,7 +19,7 @@ const STEPS: { n: string; title: string; text: string; Icon: LucideIcon }[] = [
 const FEATURES: { title: string; text: string; Icon: LucideIcon }[] = [
   { Icon: Smartphone, title: 'Works on any phone', text: 'No QR codes. A 4–6 digit code by SMS or WhatsApp is all a customer needs.' },
   { Icon: Wallet, title: 'Three ways to pay', text: 'Crypto (USDC), mobile money or bank transfer, all settled into one escrow.' },
-  { Icon: ShieldCheck, title: 'No-show protection', text: 'Deposits release by rule: refund, pay out, or auto-release after a deadline.' },
+  { Icon: ShieldCheck, title: 'No-show protection', text: 'Every job has a deadline. Until it, the provider can be paid; after it, the customer can take the money back.' },
   { Icon: Store, title: 'Built for local business', text: 'Salons, repairs, suppliers and event services across East Africa.' },
 ]
 
@@ -28,9 +29,7 @@ const tabFromHash = (): TabId => {
 }
 
 function App() {
-  const ctx = useCounterProgram()
-  const [count, setCount] = useState<number | null>(null)
-  const [status, setStatus] = useState('')
+  const ctx = usePamojaProgram()
   const [tab, setTab] = useState<TabId>(tabFromHash)
   const [query, setQuery] = useState('')
 
@@ -39,29 +38,6 @@ function App() {
     window.history.replaceState(null, '', t === 'home' ? window.location.pathname : `#${t}`)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
-
-  const refresh = useCallback(async () => {
-    if (!ctx) return
-    const acc = await ctx.program.account.counter.fetchNullable(ctx.counterPda)
-    setCount(acc ? acc.count.toNumber() : null)
-  }, [ctx])
-
-  useEffect(() => { refresh().catch(console.error) }, [refresh])
-
-  const initialize = async () => {
-    if (!ctx) return
-    setStatus('Sending…')
-    try {
-      const sig = await ctx.program.methods.initialize().rpc()
-      setStatus(`Created: ${sig.slice(0, 12)}…`)
-      await refresh()
-    } catch (e) {
-      setStatus(String(e))
-    }
-  }
-
-  // TODO (you): add an `increment` handler here once the on-chain
-  // instruction exists. Pattern: ctx.program.methods.increment().rpc()
 
   return (
     <>
@@ -128,18 +104,17 @@ function App() {
             )}
 
             {tab === 'devnet' && (
-              <Section title="Try it on devnet" sub="Connect a wallet to create your first on-chain account. No real money involved.">
+              <Section title="Try it on devnet" sub="Run a full escrow on Solana devnet. Test tokens only, no real money.">
                 <div className="card demo">
-                  {ctx ? (
-                    <>
-                      <p className="count">Counter: <strong>{count === null ? 'not created yet' : count}</strong></p>
-                      {count === null && <button className="btn btn-primary" onClick={initialize}>Create counter</button>}
-                      {/* TODO (you): add an "Increment" button when count !== null */}
-                      <p className="status">{status}</p>
-                    </>
-                  ) : (
-                    <p>Connect your wallet (top right) to get started.</p>
-                  )}
+                  <ol className="devnet-steps">
+                    <li>Get devnet SOL from the <a href="https://faucet.solana.com" target="_blank" rel="noreferrer">Solana faucet</a> and test USDC from the <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">Circle faucet</a> (choose Solana Devnet).</li>
+                    <li>Open <button className="linkish" onClick={() => go('pay')}>Pay</button>, choose Crypto, and lock a payment for a provider's wallet address.</li>
+                    <li>Track it in the <button className="linkish" onClick={() => go('dashboard')}>Business</button> tab: confirm to pay the provider before the deadline, or refund after it.</li>
+                  </ol>
+                  <p className="status">
+                    {ctx ? 'Wallet connected.' : 'Connect your wallet (top right) to get started.'} Program:{' '}
+                    <a href={explorer(PROGRAM_ID)} target="_blank" rel="noreferrer">{PROGRAM_ID.slice(0, 4)}…{PROGRAM_ID.slice(-4)}</a>
+                  </p>
                 </div>
               </Section>
             )}

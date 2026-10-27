@@ -21,8 +21,9 @@
 .ico { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, rgba(20,241,178,.16), rgba(139,92,246,.2)); border: 1px solid var(--border); color: var(--teal); }
 .num { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: .5rem; border-radius: 6px; background: var(--grad-cta); color: #000; font-size: .8rem; font-weight: 700; vertical-align: middle; }
 
-.demo { max-width: 460px; text-align: center; }
-.demo .count { color: var(--text-h); font-size: 1.1rem; margin-bottom: 1rem; }
+.demo { max-width: 560px; }
+.devnet-steps { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.5; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--teal); text-decoration: underline; cursor: pointer; }
 .status { margin-top: 1rem !important; font-size: .85rem; word-break: break-word; }
 
 .footer { margin-top: 4rem; padding: 2rem 1rem; border-top: 1px solid var(--border); text-align: center; color: var(--muted); }

@@ -8,12 +8,12 @@ import {
   mintTo,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { CounterProgram } from "../target/types/counter_program";
+import { Pamoja } from "../target/types/pamoja";
 
 describe("release", () => {
   anchor.setProvider(anchor.AnchorProvider.env());
   const provider = anchor.getProvider() as anchor.AnchorProvider;
-  const program = anchor.workspace.counterProgram as Program<CounterProgram>;
+  const program = anchor.workspace.pamoja as Program<Pamoja>;
   const customer = (provider.wallet as anchor.Wallet).payer;
 
   const providerWallet = anchor.web3.Keypair.generate();
@@ -29,9 +29,10 @@ describe("release", () => {
   let job: anchor.web3.PublicKey;
   let vault: anchor.web3.PublicKey;
 
-  const releaseAccounts = (signer: anchor.web3.PublicKey) => ({
+  const releaseAccounts = (signer: anchor.web3.PublicKey, jobAddr = job) => ({
     attestor: signer,
-    job,
+    job: jobAddr,
+    customer: customer.publicKey,
     mint,
     providerTokenAccount: providerToken,
     tokenProgram: TOKEN_PROGRAM_ID,
@@ -66,29 +67,67 @@ describe("release", () => {
     } catch (e) {
       message = String(e);
     }
-    assert.match(message, /HasOne|has_one|ConstraintHasOne|2001/i);
+    assert.match(message, /NotAttestor|HasOne|2001/i);
     const jobAccount = await program.account.job.fetch(job);
     assert.deepEqual(jobAccount.status, { funded: {} }); // nothing moved
   });
 
-  it("pays the provider when the attestor signs", async () => {
+  it("pays the provider when the attestor signs, even if someone sent extra tokens to the vault", async () => {
+    // Anyone can send tokens to the vault. That must not stop the vault from being closed.
+    const STRAY = 1_000;
+    await mintTo(provider.connection, customer, mint, vault, customer, STRAY);
+
     await program.methods.release().accountsPartial(releaseAccounts(attestor.publicKey)).signers([attestor]).rpc();
 
     const providerAccount = await getAccount(provider.connection, providerToken);
-    assert.equal(Number(providerAccount.amount), AMOUNT);
-    const vaultAccount = await getAccount(provider.connection, vault);
-    assert.equal(Number(vaultAccount.amount), 0);
+    assert.equal(Number(providerAccount.amount), AMOUNT + STRAY); // the whole vault is paid out
+    assert.isNull(await provider.connection.getAccountInfo(vault), "vault is closed and its rent returned");
     const jobAccount = await program.account.job.fetch(job);
     assert.deepEqual(jobAccount.status, { released: {} });
   });
 
   it("rejects a second release", async () => {
+    const paidOut = Number((await getAccount(provider.connection, providerToken)).amount);
     let message = "";
     try {
       await program.methods.release().accountsPartial(releaseAccounts(attestor.publicKey)).signers([attestor]).rpc();
     } catch (e) {
       message = String(e);
     }
-    assert.match(message, /WrongStatus|right status/i);
+    // The first call closed the vault, so the second fails before it even reaches the status check.
+    assert.match(message, /AccountNotInitialized|WrongStatus/);
+    const after = await getAccount(provider.connection, providerToken);
+    assert.equal(Number(after.amount), paidOut, "no second payout");
+  });
+
+  it("rejects a release after the deadline, so it can never race a refund", async () => {
+    const lateId = new BN(8);
+    const [lateJob] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("job"), customer.publicKey.toBuffer(), lateId.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const [lateVault] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("vault"), lateJob.toBuffer()], program.programId);
+    await program.methods
+      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 4))
+      .rpc();
+    await program.methods
+      .fundJob()
+      .accountsPartial({ job: lateJob, mint, customerTokenAccount: customerToken, tokenProgram: TOKEN_PROGRAM_ID })
+      .rpc();
+    await new Promise((r) => setTimeout(r, 7000)); // let the deadline pass
+
+    let message = "";
+    try {
+      await program.methods
+        .release()
+        .accountsPartial({ ...releaseAccounts(attestor.publicKey, lateJob), vault: lateVault })
+        .signers([attestor])
+        .rpc();
+    } catch (e) {
+      message = String(e);
+    }
+    assert.match(message, /DeadlinePassed/);
+    const jobAccount = await program.account.job.fetch(lateJob);
+    assert.deepEqual(jobAccount.status, { funded: {} }); // still there for the customer to refund
   });
 });

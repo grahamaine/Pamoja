@@ -2,15 +2,15 @@
  * Program IDL in camelCase format in order to be used in JS/TS.
  *
  * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/counter_program.json`.
+ * IDL can be found at `target/idl/pamoja.json`.
  */
-export type CounterProgram = {
+export type Pamoja = {
   "address": "9dLzUWtKppSVHsBBAAea7nqhWUy2pzY3E19PrnGdP2Q4",
   "metadata": {
-    "name": "counterProgram",
+    "name": "pamoja",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Created with Anchor"
+    "description": "Pamoja: pay-when-done service escrow on Solana"
   },
   "instructions": [
     {
@@ -28,6 +28,56 @@ export type CounterProgram = {
       "accounts": [
         {
           "name": "customer",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "job"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeJob",
+      "discriminator": [
+        90,
+        100,
+        180,
+        200,
+        200,
+        163,
+        120,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "customer",
+          "writable": true,
           "signer": true,
           "relations": [
             "job"
@@ -229,54 +279,6 @@ export type CounterProgram = {
       "args": []
     },
     {
-      "name": "initialize",
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
-      "accounts": [
-        {
-          "name": "authority",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "counter",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  97,
-                  110,
-                  99,
-                  104,
-                  111,
-                  114
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
-              }
-            ]
-          }
-        },
-        {
-          "name": "systemProgram",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": []
-    },
-    {
       "name": "refund",
       "discriminator": [
         2,
@@ -291,6 +293,7 @@ export type CounterProgram = {
       "accounts": [
         {
           "name": "customer",
+          "writable": true,
           "signer": true,
           "relations": [
             "job"
@@ -410,6 +413,16 @@ export type CounterProgram = {
           }
         },
         {
+          "name": "customer",
+          "docs": [
+            "Receives the vault's rent back. Not a signer: the customer does not need to be present."
+          ],
+          "writable": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
           "name": "mint",
           "relations": [
             "job"
@@ -450,19 +463,6 @@ export type CounterProgram = {
   ],
   "accounts": [
     {
-      "name": "counter",
-      "discriminator": [
-        255,
-        176,
-        4,
-        245,
-        188,
-        253,
-        124,
-        25
-      ]
-    },
-    {
       "name": "job",
       "discriminator": [
         75,
@@ -479,75 +479,65 @@ export type CounterProgram = {
   "errors": [
     {
       "code": 6000,
-      "name": "overflow",
-      "msg": "Counter overflow"
-    },
-    {
-      "code": 6001,
       "name": "invalidAmount",
       "msg": "Amount must be greater than zero"
     },
     {
-      "code": 6002,
+      "code": 6001,
       "name": "deadlineInPast",
       "msg": "Deadline must be in the future"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "wrongStatus",
       "msg": "Job is not in the right status for this action"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "invalidReference",
       "msg": "Reference must be 2-8 uppercase letters or digits"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "notAttestor",
       "msg": "Only the confirmation service can release funds"
     },
     {
-      "code": 6006,
-      "name": "notProvider",
-      "msg": "Only the provider can do this"
-    },
-    {
-      "code": 6007,
+      "code": 6005,
       "name": "notCustomer",
       "msg": "Only the customer can do this"
     },
     {
-      "code": 6008,
+      "code": 6006,
+      "name": "wrongMint",
+      "msg": "The token does not match this job"
+    },
+    {
+      "code": 6007,
       "name": "tooEarly",
       "msg": "The deadline has not passed yet"
+    },
+    {
+      "code": 6008,
+      "name": "deadlinePassed",
+      "msg": "The deadline has passed; the customer can now reclaim the payment"
+    },
+    {
+      "code": 6009,
+      "name": "jobNotFinished",
+      "msg": "The job is still open and cannot be closed"
     }
   ],
   "types": [
     {
-      "name": "counter",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "count",
-            "type": "u64"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
       "name": "job",
       "docs": [
-        "One service booking: a customer pays a provider once the work is confirmed."
+        "One service booking: a customer pays a provider once the work is confirmed.",
+        "",
+        "Timeline:",
+        "now <= deadline : only `release` can move the money (to the provider)",
+        "now >  deadline : only `refund` can move the money (back to the customer)",
+        "The two windows never overlap, so release and refund can never race each other."
       ],
       "type": {
         "kind": "struct",
@@ -630,9 +620,9 @@ export type CounterProgram = {
       "value": "\"job\""
     },
     {
-      "name": "seed",
+      "name": "vaultSeed",
       "type": "string",
-      "value": "\"anchor\""
+      "value": "\"vault\""
     }
   ]
 };

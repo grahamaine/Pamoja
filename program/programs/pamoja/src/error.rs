@@ -2,8 +2,6 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Counter overflow")]
-    Overflow,
     #[msg("Amount must be greater than zero")]
     InvalidAmount,
     #[msg("Deadline must be in the future")]
@@ -14,10 +12,14 @@ pub enum ErrorCode {
     InvalidReference,
     #[msg("Only the confirmation service can release funds")]
     NotAttestor,
-    #[msg("Only the provider can do this")]
-    NotProvider,
     #[msg("Only the customer can do this")]
     NotCustomer,
+    #[msg("The token does not match this job")]
+    WrongMint,
     #[msg("The deadline has not passed yet")]
     TooEarly,
+    #[msg("The deadline has passed; the customer can now reclaim the payment")]
+    DeadlinePassed,
+    #[msg("The job is still open and cannot be closed")]
+    JobNotFinished,
 }
