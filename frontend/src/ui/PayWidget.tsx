@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Coins, Smartphone, CreditCard, Loader2, CircleCheck, CircleX, type LucideIcon } from 'lucide-react'
+import { Coins, Smartphone, CreditCard, Loader2, CircleCheck, CircleX, Globe, type LucideIcon } from 'lucide-react'
 import { CryptoPay } from './CryptoPay'
+import { AnyChainPay } from './AnyChainPay'
 import './PayWidget.css'
 
-type Method = 'mtn' | 'airtel' | 'pesapal' | 'crypto'
+type Method = 'mtn' | 'airtel' | 'pesapal' | 'crypto' | 'anychain'
 type Phase = 'idle' | 'sending' | 'waiting' | 'done' | 'failed'
 
 const METHODS: { id: Method; label: string; hint: string; Icon: LucideIcon }[] = [
@@ -11,6 +12,7 @@ const METHODS: { id: Method; label: string; hint: string; Icon: LucideIcon }[] =
   { id: 'airtel', label: 'Airtel Money', hint: 'Approve on your phone', Icon: Smartphone },
   { id: 'pesapal', label: 'Card / Bank', hint: 'Pesapal checkout', Icon: CreditCard },
   { id: 'crypto', label: 'Crypto (USDC)', hint: 'Pay from your wallet', Icon: Coins },
+  { id: 'anychain', label: 'Any chain', hint: 'BTC, ETH, USDT and 100+ more', Icon: Globe },
 ]
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
@@ -49,11 +51,6 @@ export function PayWidget() {
   }
 
   const pay = async () => {
-    if (method === 'crypto') {
-      setPhase('idle')
-      setMessage('Crypto payments use the escrow program (fund_job), which is still being built.')
-      return
-    }
     setPhase('sending')
     setMessage('')
     try {
@@ -92,6 +89,8 @@ export function PayWidget() {
 
       {method === 'crypto' ? (
         <CryptoPay />
+      ) : method === 'anychain' ? (
+        <AnyChainPay onUseUsdc={() => setMethod('crypto')} />
       ) : (
         <>
       <div className="fields">

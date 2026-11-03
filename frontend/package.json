@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "sync-idl": "node scripts/sync-idl.mjs",
+    "test:aurora": "npx -y tsx scripts/test-aurora.mts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -24,12 +25,14 @@
     "@web3icons/react": "^4.1.24",
     "buffer": "^6.0.3",
     "lucide-react": "^1.52.0",
+    "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
     "@types/node": "^24.19.1",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vercel/node": "^22.0.0",

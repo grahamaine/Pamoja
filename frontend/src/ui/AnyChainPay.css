@@ -1,0 +1,31 @@
+/* Pay from any chain (Aurora Intents). Reuses .fields / .pay / .pay-msg / .crypto-note from PayWidget.css */
+.anychain .fields label.wide { grid-column: 1 / -1; }
+
+.ac-price { margin: 0 0 1rem; padding: .8rem 1rem; border-left: 3px solid var(--teal); background: rgba(20,241,178,.06); border-radius: 0 10px 10px 0; color: var(--text); line-height: 1.5; }
+.ac-price strong, .ac-send strong { color: var(--text-h); font-weight: 500; }
+.ac-foot { margin-top: 1.1rem; }
+
+/* Where to send: the QR is the one bold element on this screen */
+.ac-deposit { display: grid; grid-template-columns: auto 1fr; gap: 1.2rem; align-items: start; margin-bottom: 1.2rem; }
+.ac-deposit img { border-radius: 12px; background: #fff; padding: 6px; max-width: 100%; height: auto; }
+.ac-deposit-text { display: grid; gap: .6rem; min-width: 0; }
+.ac-send { margin: 0; font-size: 1.15rem; color: var(--text); }
+.ac-copy { display: grid; grid-template-columns: 1fr auto; gap: .2rem .6rem; align-items: center; }
+.ac-copy span { grid-column: 1 / -1; color: var(--muted); font-size: .78rem; }
+.ac-copy code { overflow-wrap: anywhere; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-h); font-size: .85rem; }
+.ac-copy .mini { display: inline-flex; align-items: center; gap: .3rem; }
+@media (max-width: 560px) {
+  .ac-deposit { grid-template-columns: 1fr; justify-items: center; }
+  .ac-deposit-text { justify-self: stretch; }
+}
+
+/* Progress: a real sequence, so it is shown as one */
+.ac-steps { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .45rem; }
+.ac-steps li { display: flex; align-items: center; gap: .55rem; color: var(--muted); font-size: .92rem; }
+.ac-steps li.active { color: var(--text-h); }
+.ac-steps li.done { color: var(--teal); }
+.ac-steps .dot { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--border); flex: none; }
+
+.ac-actions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.ac-actions .mini { display: inline-flex; align-items: center; gap: .35rem; }
+@media (prefers-reduced-motion: reduce) { .anychain .spin { animation: none; } }

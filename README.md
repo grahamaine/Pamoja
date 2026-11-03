@@ -21,6 +21,7 @@ More detail: [docs/how-it-works.md](docs/how-it-works.md).
 ## What is in the app
 
 - Services and store categories (beauty, repairs, cleaning, construction, rides, food, delivery, shops and more), each with a job reference code.
+- **Pay from any chain (Aurora Intents).** Customers pay with USDT on Tron, ETH on Base, BTC and 100+ other tokens on 30+ chains, from a wallet or an exchange; exactly the chosen amount arrives as USDC in their Solana wallet, ready to lock in escrow. Built on the Aurora Intents Swap API (NEAR Intents). See [docs/aurora-intents.md](docs/aurora-intents.md).
 - Business dashboard with live jobs from devnet (escrow balance, payouts, provider levels, embeddable "Pay with Pamoja" button). Providers see whether each job is in real USDC and confirmed by the Pamoja service before they start work.
 - Wallet connection: Phantom, Solflare and WalletConnect.
 - Payment routes for MTN MoMo, Airtel Money and Pesapal (card, bank, mobile money), plus a crypto option.
@@ -83,6 +84,7 @@ Environment variables are listed in [`frontend/.env.example`](frontend/.env.exam
 ## Honest limits
 
 - A customer who receives the service can refuse to share the code and refund after the deadline. The deadline rule prevents release and refund from racing, but there is no dispute process yet (roadmap item 4).
+- Pay from any chain uses real funds on Solana mainnet (NEAR Intents has no testnet liquidity), while the escrow runs on devnet for the hackathon. The two steps join up once the program is on mainnet.
 - The customer chooses the token and the confirmer for each job. That cannot take money from a provider, but it can leave them unpaid, so the dashboard tells providers when a job is not in USDC or not confirmed by the Pamoja service.
 
 - Confirmation by SMS code relies on a trusted confirmation service, because a 6-digit code cannot be safely verified on-chain. A wallet-signed confirmation is planned as a fallback.
