@@ -81,10 +81,20 @@ let cache: { at: number; tokens: AuroraToken[] } | null = null
 
 export async function tokens(f: Fetcher = fetch): Promise<AuroraToken[]> {
   if (cache && Date.now() - cache.at < 60_000) return cache.tokens
-  const list = await call<AuroraToken[]>(f, `${BASE}/tokens/${apiKey()}`)
-  if (!Array.isArray(list)) throw new Error('Aurora token list is not an array')
+  const list = unwrapTokens(await call<unknown>(f, `${BASE}/tokens/${apiKey()}`))
   cache = { at: Date.now(), tokens: list }
   return list
+}
+
+/** The docs show a bare array; the live API may wrap it ({ tokens: [...] }, { data: [...] }, ...). Accept both. */
+export function unwrapTokens(body: unknown): AuroraToken[] {
+  const isList = (v: unknown): v is AuroraToken[] => Array.isArray(v) && v.every((t) => t && typeof (t as AuroraToken).assetId === 'string')
+  if (isList(body)) return body
+  if (body && typeof body === 'object') {
+    for (const v of Object.values(body as Record<string, unknown>)) if (isList(v) && v.length) return v
+  }
+  const shape = body && typeof body === 'object' ? `object with keys ${Object.keys(body).slice(0, 8).join(', ')}` : typeof body
+  throw new Error(`Aurora token list has an unexpected shape: ${shape}`)
 }
 
 export function resetTokenCache() {

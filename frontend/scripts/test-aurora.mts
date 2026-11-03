@@ -1,7 +1,7 @@
 // Unit checks for api/_lib/aurora.ts against mocked Aurora responses (shapes from the 1Click OpenAPI spec).
 //   npx tsx scripts/test-aurora.mts
 import assert from 'node:assert/strict'
-import { quote, status, payableTokens, usdcUnits, refundAddress, resetTokenCache, type Fetcher } from '../api/_lib/aurora.ts'
+import { quote, status, payableTokens, usdcUnits, refundAddress, resetTokenCache, unwrapTokens, type Fetcher } from '../api/_lib/aurora.ts'
 
 process.env.AURORA_API_KEY = 'test-key-123'
 const USDC_SOL = 'nep141:sol-5ce3bf3a31af18be40ba30f721101b4341690186.omft.near'
@@ -125,6 +125,13 @@ await ok('status maps the Solana transaction', async () => {
   assert.equal(s.status, 'SUCCESS')
   assert.deepEqual(s.solanaTxs, [{ hash: '5solTx', url: 'https://solscan.io/tx/5solTx' }])
   await assert.rejects(status('../../etc', aurora), /Invalid deposit address/)
+})
+
+await ok('token list accepted bare or wrapped', () => {
+  assert.equal(unwrapTokens(TOKENS).length, 4)
+  assert.equal(unwrapTokens({ tokens: TOKENS }).length, 4)
+  assert.equal(unwrapTokens({ data: TOKENS, total: 4 }).length, 4)
+  assert.throws(() => unwrapTokens({ message: 'hi' }), /unexpected shape: object with keys message/)
 })
 
 await ok('no key configured -> clear 503', async () => {
