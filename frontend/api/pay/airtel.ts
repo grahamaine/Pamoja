@@ -48,7 +48,8 @@ export default route(async (req) => {
   const jobRef = parseRef(req.body?.jobRef)
   const transactionId = `PMJ-${randomUUID().slice(0, 8)}`
   const t = await token()
-  const path = process.env.AIRTEL_PAYMENT_PATH ?? '/merchant/v2/payments/'
+  // v1 is Airtel's standard collection (USSD push). v2 needs message signing, which new apps don't have.
+  const path = process.env.AIRTEL_PAYMENT_PATH ?? '/merchant/v1/payments/'
   const r = await fetch(`${env('AIRTEL_BASE_URL')}${path}`, {
     method: 'POST',
     headers: headers(t),

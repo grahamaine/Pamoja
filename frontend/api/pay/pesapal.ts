@@ -42,7 +42,17 @@ export default route(async (req) => {
   if (req.method === 'GET') {
     const tracking = String(req.query.tracking ?? req.query.OrderTrackingId ?? '')
     if (!/^[A-Za-z0-9-]{8,64}$/.test(tracking)) throw new HttpError(400, 'Invalid tracking id')
-    return status(tracking)
+    const result = await status(tracking)
+    // Pesapal's IPN call carries OrderNotificationType and expects this acknowledgement, or it retries.
+    if (req.query.OrderNotificationType) {
+      return {
+        orderNotificationType: String(req.query.OrderNotificationType),
+        orderTrackingId: tracking,
+        orderMerchantReference: String(req.query.OrderMerchantReference ?? result.jobRef ?? ''),
+        status: 200,
+      }
+    }
+    return result
   }
 
   if (req.query.action === 'register-ipn') {

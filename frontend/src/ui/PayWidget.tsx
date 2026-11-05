@@ -43,7 +43,7 @@ export function PayWidget() {
       tries += 1
       try {
         const { status } = await call<{ status: string }>(statusUrl)
-        if (status === 'SUCCESSFUL') { window.clearInterval(timer.current); setPhase('done'); setMessage('Payment received. Funds will be locked in escrow.') }
+        if (status === 'SUCCESSFUL') { window.clearInterval(timer.current); setPhase('done'); setMessage('Payment received. In this prototype, mobile money and card payments are not yet linked to the escrow; use Crypto or Any chain for the full escrow flow.') }
         else if (status === 'FAILED') { window.clearInterval(timer.current); setPhase('failed'); setMessage('The payment was declined or cancelled.') }
       } catch { /* keep polling */ }
       if (tries >= 40) { window.clearInterval(timer.current); setPhase('failed'); setMessage('Timed out waiting for approval. Try again.') }
