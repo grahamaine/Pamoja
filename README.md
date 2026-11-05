@@ -6,7 +6,14 @@
 
 **Live demo:** https://pamoja-solana.vercel.app (Solana devnet)
 
-> Status: prototype for the Encode Club Solana Hackathon 2026. The escrow program is complete (`create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`) with 17 passing tests, and the dashboard and crypto checkout use real devnet jobs. The SMS confirmation service is live: customers get a code by text message on any phone, and the provider enters it to release payment. Pay from any chain (Aurora Intents) is live on mainnet. Mobile money and card routes are written but not yet sandbox-tested.
+> Status: prototype for the Encode Club Solana Hackathon 2026. The escrow program is complete (`create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`) with 17 passing tests, and the dashboard and crypto checkout use real devnet jobs. The SMS confirmation service is live: customers get a code by text message on any phone, and the provider enters it to release payment. Pay from any chain (Aurora Intents) is live on mainnet. MTN MoMo and Pesapal (card and bank) are connected to their sandboxes; Airtel Money is waiting for its sandbox keys.
+
+## Hackathon submission
+
+- **Tracks:** Best Consumer App on Solana, and the Aurora Intents bounty.
+- **Live demo:** https://pamoja-solana.vercel.app (escrow on Solana devnet; Pay from any chain on mainnet).
+- **Demo video:** [add link]
+- **Slides:** [add link]
 
 ## How it works
 
@@ -24,7 +31,7 @@ More detail: [docs/how-it-works.md](docs/how-it-works.md).
 - **Pay from any chain (Aurora Intents).** Customers pay with USDT on Tron, ETH on Base, BTC and 100+ other tokens on 30+ chains, from a wallet or an exchange; exactly the chosen amount arrives as USDC in their Solana wallet, ready to lock in escrow. Built on the Aurora Intents Swap API (NEAR Intents). See [docs/aurora-intents.md](docs/aurora-intents.md).
 - Business dashboard with live jobs from devnet (escrow balance, payouts, provider levels, embeddable "Pay with Pamoja" button). Providers see whether each job is in real USDC and confirmed by the Pamoja service before they start work.
 - Wallet connection: Phantom, Solflare and WalletConnect.
-- Payment routes for MTN MoMo, Airtel Money and Pesapal (card, bank, mobile money), plus a crypto option.
+- Mobile money and card: MTN MoMo and Pesapal (card, bank) connected to their sandboxes; Airtel Money built and waiting for sandbox keys. See [docs/payments.md](docs/payments.md).
 - Supported-chains logo slideshow, mobile-first layout, Oswald typography.
 
 ## Tech
@@ -76,16 +83,16 @@ Environment variables are listed in [`frontend/.env.example`](frontend/.env.exam
 
 1. ✅ Escrow program: `create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`, with non-overlapping deadline windows and 17 tests.
 2. ✅ Dashboard and crypto checkout connected to real on-chain jobs, with a provider-side trust badge.
-3. ✅ Confirmation service built and tested end to end (SMS code, wallet-signed request, attempt limits, deadline and fee-balance checks). Needs Upstash and Africa's Talking accounts to switch on.
+3. ✅ Confirmation service live: SMS code by Africa's Talking, wallet-signed request, attempt limits, deadline and fee-balance checks, tested end to end.
 4. Provider "delivered" step with a dispute window, so a customer cannot withhold the code and wait out the deadline.
 5. Server step that funds the escrow after a confirmed mobile money or card payment.
-6. Sandbox testing of MTN, Airtel and Pesapal, then production onboarding.
+6. ✅ Pay from any chain with Aurora Intents, live on mainnet.
+7. ✅ MTN MoMo and Pesapal connected to their sandboxes. Next: Airtel sandbox, then production onboarding with each provider.
 
 ## Honest limits
 
 - A customer who receives the service can refuse to share the code and refund after the deadline. The deadline rule prevents release and refund from racing, but there is no dispute process yet (roadmap item 4).
 - Pay from any chain uses real funds on Solana mainnet (NEAR Intents has no testnet liquidity), while the escrow runs on devnet for the hackathon. The two steps join up once the program is on mainnet.
 - The customer chooses the token and the confirmer for each job. That cannot take money from a provider, but it can leave them unpaid, so the dashboard tells providers when a job is not in USDC or not confirmed by the Pamoja service.
-
 - Confirmation by SMS code relies on a trusted confirmation service, because a 6-digit code cannot be safely verified on-chain. A wallet-signed confirmation is planned as a fallback.
-- The payment routes were written from the providers' public documentation and have not yet been run against live sandbox credentials.
+- Mobile money and card payments run in the providers' sandboxes (MTN's sandbox approves payments automatically and uses EUR), and they are not yet linked to the escrow: a confirmed payment does not fund a job (roadmap item 5).

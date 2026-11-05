@@ -36,8 +36,14 @@ server environment variables** (no `VITE_` prefix, never committed). See `fronte
 
 ### Status
 
-These endpoints are written from the providers' public documentation and **have not been run against
-live sandbox credentials**. Expect to adjust field names after the first real test.
+| Provider | State |
+|---|---|
+| MTN MoMo | Connected to the sandbox. Sign-in and payment-status lookups verified on the live site. |
+| Pesapal (card, bank) | Connected to the sandbox, payment-notification URL registered. Sign-in and status lookups verified on the live site. |
+| Airtel Money | Built; waiting for UAT (sandbox) credentials from the Airtel developer portal. |
+
+The MTN sandbox approves every payment on its own (no prompt reaches a real phone) and only accepts EUR.
+Pesapal answers its payment notifications (IPN) with the acknowledgement it expects, so it does not retry.
 
 ## Important limits of the current design
 
@@ -52,10 +58,16 @@ live sandbox credentials**. Expect to adjust field names after the first real te
 
 ### MTN MoMo (sandbox)
 1. Create an account at <https://momodeveloper.mtn.com>, subscribe to **Collections**, and copy the **Primary key**.
-2. On your own machine run (PowerShell, from `frontend/`):
+2. On your own machine, from `frontend/`:
    ```powershell
+   # PowerShell
    $env:MTN_SUBSCRIPTION_KEY = "<primary key>"; node scripts/mtn-sandbox-setup.mjs
    ```
+   ```bash
+   # Git Bash / macOS / Linux
+   MTN_SUBSCRIPTION_KEY="<primary key>" node scripts/mtn-sandbox-setup.mjs
+   ```
+   A `401` means the key is not an active **Collections** subscription key.
    It creates a sandbox API user and API key and prints them once.
 3. Add to Vercel (production, mark sensitive): `MTN_SUBSCRIPTION_KEY`, `MTN_API_USER`, `MTN_API_KEY`,
    `MTN_BASE_URL=https://sandbox.momodeveloper.mtn.com`, `MTN_TARGET_ENV=sandbox`, `MTN_CURRENCY=EUR`.
@@ -66,9 +78,20 @@ Production (`mtnuganda`, UGX) needs MTN Uganda to approve your business; the san
 ### Airtel Money (UAT)
 1. Register at <https://developers.airtel.africa>, create an app, and take its UAT **client id** and **client secret**.
 2. Add `AIRTEL_BASE_URL=https://openapiuat.airtel.africa`, `AIRTEL_CLIENT_ID`, `AIRTEL_CLIENT_SECRET`.
-3. Public guides disagree on the collection path (`/merchant/v1/payments/` vs `/merchant/v2/payments/`).
-   Set `AIRTEL_PAYMENT_PATH` (and `AIRTEL_STATUS_PATH` if needed) to what the portal's API reference shows.
+3. The default collection path is `/merchant/v1/payments/`. Only set `AIRTEL_PAYMENT_PATH=/merchant/v2/payments/`
+   if your app has message signing enabled.
 4. Redeploy, then `node scripts/check-payments.mjs airtel`.
+
+### Pesapal (sandbox)
+1. Take the demo consumer key and secret from <https://developer.pesapal.com>.
+2. Add to Vercel (production, mark sensitive): `PESAPAL_BASE_URL=https://cybqa.pesapal.com/pesapalv3`,
+   `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`, and `PUBLIC_APP_URL=https://pamoja-solana.vercel.app`.
+3. Redeploy, then register the payment-notification URL once:
+   ```bash
+   curl -X POST "https://pamoja-solana.vercel.app/api/pay/pesapal?action=register-ipn"
+   ```
+   Store the returned `ipn_id` as `PESAPAL_IPN_ID` and redeploy again.
+4. Pay → Card / Bank opens Pesapal's sandbox checkout; use a test card from Pesapal's sandbox docs.
 
 ### Reading the check script
 `500 Server is missing …` = not configured. `502` = the provider rejected the call; read the Vercel function logs
