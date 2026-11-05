@@ -260,11 +260,27 @@ export async function status(depositAddress: unknown, f: Fetcher = fetch) {
   }
 }
 
-/** Tokens a customer can pay with, grouped for the picker. Hides USDC-on-Solana itself and unpriced tokens. */
+// What people actually hold to pay a hairdresser or a plumber: stablecoins and major coins. Aurora's
+// full list also has memecoins, yield-vault receipts and deprecated tokens, which only add confusion.
+export const PAYABLE_SYMBOLS = new Set([
+  'USDT', 'USDC', 'USDT0', 'DAI', 'ETH', 'BTC', 'WBTC', 'wBTC', 'cbBTC', 'BNB', 'SOL', 'TRX', 'NEAR', 'wNEAR',
+  'POL', 'AVAX', 'ARB', 'OP', 'SUI', 'APT', 'XRP', 'DOGE', 'LTC', 'BCH', 'ZEC', 'XLM', 'ADA',
+])
+
+/** Tokens a customer can pay with: curated, priced, one entry per chain+symbol, never USDC-on-Solana itself. */
 export async function payableTokens(f: Fetcher = fetch) {
   const list = await tokens(f)
   const usdc = solanaUsdc(list)
-  const usable = list.filter((t) => t.assetId !== usdc.assetId && typeof t.price === 'number' && t.price > 0)
+  const seen = new Set<string>()
+  const usable = list.filter((t) => {
+    if (t.assetId === usdc.assetId || !(typeof t.price === 'number' && t.price > 0)) return false
+    if (!PAYABLE_SYMBOLS.has(t.symbol)) return false
+    if (t.assetId.startsWith('1cs_v1:') || t.assetId.includes('miden-')) return false // wrapped re-listings of the same coin
+    const key = `${t.blockchain}:${t.symbol.toUpperCase()}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   return {
     destination: { assetId: usdc.assetId, symbol: 'USDC', chain: 'Solana' },
     tokens: usable.map((t) => ({ assetId: t.assetId, symbol: t.symbol, blockchain: t.blockchain, chain: chainName(t.blockchain), price: t.price! })),

@@ -12,6 +12,9 @@ const TOKENS = [
   { assetId: USDT_TRON, decimals: 6, blockchain: 'tron', symbol: 'USDT', price: 1, contractAddress: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' },
   { assetId: ETH_BASE, decimals: 18, blockchain: 'base', symbol: 'ETH', price: 2500, contractAddress: null },
   { assetId: 'nep141:dead.near', decimals: 18, blockchain: 'near', symbol: 'DEAD', contractAddress: null }, // no price
+  { assetId: 'nep141:token.0xshitzu.near', decimals: 18, blockchain: 'near', symbol: 'SHITZU', price: 0.0016 }, // memecoin
+  { assetId: '1cs_v1:btc:native:coin', decimals: 8, blockchain: 'btc', symbol: 'BTC', price: 80000 }, // re-listing
+  { assetId: 'nep245:v2_1.omni.hot.tg:9745_3aL9', decimals: 6, blockchain: 'plasma', symbol: 'USDT0(DEPRECATED)', price: 1 },
 ]
 const WALLET = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM'
 
@@ -63,7 +66,7 @@ await ok('refund address checks per chain', () => {
   assert.throws(() => refundAddress('btc', 'hello world'), /Bitcoin/)
 })
 
-await ok('token list hides USDC-on-Solana and unpriced tokens', async () => {
+await ok('token list hides USDC-on-Solana, unpriced, meme, deprecated and re-listed tokens', async () => {
   resetTokenCache()
   const r = await payableTokens(aurora)
   assert.equal(r.destination.assetId, USDC_SOL)
@@ -128,9 +131,9 @@ await ok('status maps the Solana transaction', async () => {
 })
 
 await ok('token list accepted bare or wrapped', () => {
-  assert.equal(unwrapTokens(TOKENS).length, 4)
-  assert.equal(unwrapTokens({ tokens: TOKENS }).length, 4)
-  assert.equal(unwrapTokens({ data: TOKENS, total: 4 }).length, 4)
+  assert.equal(unwrapTokens(TOKENS).length, TOKENS.length)
+  assert.equal(unwrapTokens({ tokens: TOKENS }).length, TOKENS.length)
+  assert.equal(unwrapTokens({ data: TOKENS, total: 4 }).length, TOKENS.length)
   assert.throws(() => unwrapTokens({ message: 'hi' }), /unexpected shape: object with keys message/)
 })
 
