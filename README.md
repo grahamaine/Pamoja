@@ -6,7 +6,7 @@
 
 **Live demo:** https://pamoja-solana.vercel.app (Solana devnet)
 
-> Status: prototype for the Encode Club Solana Hackathon 2026. The escrow program is complete (`create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`) with 17 passing tests, and the dashboard and crypto checkout use real devnet jobs. The SMS confirmation service is built and tested end to end, and switches on once its Upstash and Africa's Talking accounts are set up; until then the site runs in demo mode, where customers confirm their own jobs. Mobile money and card routes are written but not yet sandbox-tested.
+> Status: prototype for the Encode Club Solana Hackathon 2026. The escrow program is complete (`create_job`, `fund_job`, `release`, `cancel`, `refund`, `close_job`) with 17 passing tests, and the dashboard and crypto checkout use real devnet jobs. The SMS confirmation service is live: customers get a code by text message on any phone, and the provider enters it to release payment. Pay from any chain (Aurora Intents) is live on mainnet. Mobile money and card routes are written but not yet sandbox-tested.
 
 ## How it works
 
