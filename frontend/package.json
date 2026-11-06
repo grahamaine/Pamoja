@@ -23,6 +23,7 @@
     "@solana/wallet-adapter-wallets": "^0.19.40",
     "@solana/web3.js": "^1.99.0",
     "@web3icons/react": "^4.1.24",
+    "bn.js": "^5.2.5",
     "buffer": "^6.0.3",
     "lucide-react": "^1.52.0",
     "qrcode": "^1.5.4",
@@ -31,6 +32,7 @@
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
+    "@types/bn.js": "^5.2.0",
     "@types/node": "^24.19.1",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.2.18",

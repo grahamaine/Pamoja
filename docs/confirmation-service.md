@@ -62,6 +62,9 @@ New jobs created from the Pay tab then use that key as their confirmer.
 - You must trust the service to check codes honestly. A customer-signed confirmation (no code, no trust) is a
   planned fallback.
 - Jobs created in demo mode keep their demo confirmer; only new jobs use the service.
+- The same key decides disputes (`release` for the provider, `resolve_refund` for the customer), through
+  `/api/escrow/resolve` with `ADMIN_TOKEN`. A code sent for a job still works once the job is delivered or
+  disputed, even after the deadline, because the refund path is then closed.
 - Add rate limiting by IP/phone before real use, and monitor SMS cost.
 - If the interface file changes, run `node scripts/sync-idl.mjs` in `frontend/` to refresh `api/_lib/idl.ts`.
 - Africa's Talking sandbox does not deliver to real phones; use their simulator to read the message.

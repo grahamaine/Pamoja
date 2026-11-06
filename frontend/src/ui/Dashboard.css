@@ -29,6 +29,9 @@
 .chip-in-progress { color: var(--purple); border-color: rgba(139,92,246,.5); }
 .chip-awaiting-code { color: var(--lime); border-color: rgba(203,255,1,.4); }
 .chip-released { color: var(--teal); border-color: rgba(20,241,178,.4); }
+.chip-funded { color: var(--cyan); border-color: rgba(34,211,238,.4); }
+.chip-delivered { color: var(--purple); border-color: rgba(139,92,246,.5); }
+.chip-disputed { color: #ffb020; border-color: rgba(255,176,32,.5); }
 
 .level { color: var(--text); margin: 0 0 .8rem; }
 .badge { display: inline-block; padding: .1rem .7rem; border-radius: 999px; background: var(--grad-cta); color: #000; font-weight: 700; font-size: .85rem; }

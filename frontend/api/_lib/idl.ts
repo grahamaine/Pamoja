@@ -60,6 +60,103 @@ export const IDL: any = {
       "args": []
     },
     {
+      "name": "claim",
+      "docs": [
+        "Provider: the dispute window passed with no dispute, so take the payment."
+      ],
+      "discriminator": [
+        62,
+        198,
+        214,
+        193,
+        213,
+        159,
+        108,
+        210
+      ],
+      "accounts": [
+        {
+          "name": "provider",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "Job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Receives the vault's rent back (the customer paid it in `fund_job`). Not a signer."
+          ],
+          "writable": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "close_job",
       "discriminator": [
         90,
@@ -184,8 +281,64 @@ export const IDL: any = {
         {
           "name": "deadline",
           "type": "i64"
+        },
+        {
+          "name": "dispute_window",
+          "type": "i64"
         }
       ]
+    },
+    {
+      "name": "dispute",
+      "docs": [
+        "Customer: the work was not done. Freezes the job until the attestor decides."
+      ],
+      "discriminator": [
+        216,
+        92,
+        128,
+        146,
+        202,
+        85,
+        135,
+        73
+      ],
+      "accounts": [
+        {
+          "name": "customer",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "Job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "Job"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
     },
     {
       "name": "fund_job",
@@ -271,6 +424,58 @@ export const IDL: any = {
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "mark_delivered",
+      "docs": [
+        "Provider: the work is done. Starts the customer's dispute window and closes the refund path."
+      ],
+      "discriminator": [
+        240,
+        118,
+        188,
+        142,
+        64,
+        85,
+        107,
+        18
+      ],
+      "accounts": [
+        {
+          "name": "provider",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "Job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "Job"
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -376,7 +581,8 @@ export const IDL: any = {
         {
           "name": "attestor",
           "docs": [
-            "The confirmation service. It signs only after checking the customer's SMS code off-chain."
+            "The confirmation service. It signs only after checking the customer's SMS code off-chain,",
+            "or after deciding a dispute in the provider's favour."
           ],
           "signer": true,
           "relations": [
@@ -456,6 +662,103 @@ export const IDL: any = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "resolve_refund",
+      "docs": [
+        "Attestor: a dispute was decided in the customer's favour; return the payment."
+      ],
+      "discriminator": [
+        32,
+        83,
+        239,
+        245,
+        3,
+        75,
+        181,
+        35
+      ],
+      "accounts": [
+        {
+          "name": "attestor",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.customer",
+                "account": "Job"
+              },
+              {
+                "kind": "account",
+                "path": "job.job_id",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer",
+          "docs": [
+            "Receives the vault's rent back. Not a signer: the customer does not need to be present."
+          ],
+          "writable": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "mint",
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "customer_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -523,6 +826,26 @@ export const IDL: any = {
       "code": 6009,
       "name": "JobNotFinished",
       "msg": "The job is still open and cannot be closed"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidDisputeWindow",
+      "msg": "Dispute window must be between 1 minute and 7 days"
+    },
+    {
+      "code": 6011,
+      "name": "NotProvider",
+      "msg": "Only the provider can do this"
+    },
+    {
+      "code": 6012,
+      "name": "DisputeWindowOpen",
+      "msg": "The customer can still dispute this delivery"
+    },
+    {
+      "code": 6013,
+      "name": "DisputeWindowClosed",
+      "msg": "The dispute window for this delivery has closed"
     }
   ],
   "types": [
@@ -531,10 +854,16 @@ export const IDL: any = {
       "docs": [
         "One service booking: a customer pays a provider once the work is confirmed.",
         "",
-        "Timeline:",
-        "now <= deadline : only `release` can move the money (to the provider)",
+        "Timeline while the job is Funded:",
+        "now <= deadline : `release` (customer's code) pays the provider, or the provider marks the",
+        "job Delivered",
         "now >  deadline : only `refund` can move the money (back to the customer)",
-        "The two windows never overlap, so release and refund can never race each other."
+        "The two windows never overlap, so release and refund can never race each other.",
+        "",
+        "Once Delivered, the refund path is closed. The customer has `dispute_window` seconds to dispute:",
+        "no dispute     : after the window the provider can `claim` the payment",
+        "disputed       : the attestor decides, with `release` (provider) or `resolve_refund` (customer)",
+        "So a customer can no longer withhold the code and simply wait out the deadline."
       ],
       "type": {
         "kind": "struct",
@@ -582,6 +911,14 @@ export const IDL: any = {
           {
             "name": "bump",
             "type": "u8"
+          },
+          {
+            "name": "dispute_window",
+            "type": "i64"
+          },
+          {
+            "name": "delivered_at",
+            "type": "i64"
           }
         ]
       }
@@ -605,6 +942,12 @@ export const IDL: any = {
           },
           {
             "name": "Refunded"
+          },
+          {
+            "name": "Delivered"
+          },
+          {
+            "name": "Disputed"
           }
         ]
       }
@@ -615,6 +958,22 @@ export const IDL: any = {
       "name": "JOB_SEED",
       "type": "string",
       "value": "\"job\""
+    },
+    {
+      "name": "MAX_DISPUTE_WINDOW",
+      "docs": [
+        "Longest dispute window a job can have (seven days)."
+      ],
+      "type": "i64",
+      "value": "604800"
+    },
+    {
+      "name": "MIN_DISPUTE_WINDOW",
+      "docs": [
+        "Shortest dispute window a job can have (one minute, so the flow can be demonstrated live)."
+      ],
+      "type": "i64",
+      "value": "60"
     },
     {
       "name": "VAULT_SEED",

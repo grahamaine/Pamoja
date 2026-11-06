@@ -1,6 +1,7 @@
-import { Connection, Keypair } from '@solana/web3.js'
+import { Connection, Keypair, PublicKey } from '@solana/web3.js'
 import { HttpError, env } from './common.js'
 import type { Deps, Sms, Store } from './confirm.js'
+import type { FiatDeps } from './fiat.js'
 
 /** Upstash Redis over its REST API (free tier works). Holds hashed codes and attempt counters. */
 export class UpstashStore implements Store {
@@ -75,14 +76,15 @@ const cleanEnv = (name: string) => {
   return v
 }
 
-function attestorKey(): Keypair {
-  const raw = env('ATTESTOR_SECRET_KEY')
+function keypairFromEnv(name: string): Keypair {
+  const raw = env(name)
   try {
     return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw) as number[]))
   } catch {
-    throw new HttpError(500, 'ATTESTOR_SECRET_KEY is not a valid key (expected the JSON array from a Solana keypair file)')
+    throw new HttpError(500, `${name} is not a valid key (expected the JSON array from a Solana keypair file)`)
   }
 }
+const attestorKey = () => keypairFromEnv('ATTESTOR_SECRET_KEY')
 
 let cached: Deps | null = null
 
@@ -102,3 +104,37 @@ export function buildDeps(): Deps {
   }
   return cached
 }
+
+// Circle's test USDC on Solana devnet, the same default the website uses.
+const DEFAULT_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
+
+/** True when mobile money / card payments can fund the escrow. */
+export const fiatConfigured = () => !!process.env.TREASURY_SECRET_KEY
+
+let cachedFiat: FiatDeps | null = null
+
+/**
+ * The confirmation service plus the treasury that funds jobs for mobile money and card payers.
+ * The treasury must be a different wallet from the attestor: the attestor decides disputes, and must
+ * never be the customer of the jobs it decides.
+ */
+export function buildFiatDeps(): FiatDeps {
+  if (cachedFiat) return cachedFiat
+  const base = buildDeps()
+  const treasury = keypairFromEnv('TREASURY_SECRET_KEY')
+  if (treasury.publicKey.equals(base.attestor.publicKey)) throw new HttpError(500, 'TREASURY_SECRET_KEY must be a different wallet from ATTESTOR_SECRET_KEY')
+  const rate = Number(clean(process.env.UGX_PER_USDC) || 3700)
+  if (!(rate > 0)) throw new HttpError(500, 'UGX_PER_USDC must be a positive number')
+  cachedFiat = {
+    ...base,
+    treasury,
+    mint: new PublicKey(clean(process.env.STABLECOIN_MINT) || DEFAULT_MINT),
+    ugxPerUsdc: rate,
+    appUrl: (clean(process.env.PUBLIC_APP_URL) || 'https://pamoja-solana.vercel.app').replace(/\/$/, ''),
+    adminToken: clean(process.env.ADMIN_TOKEN) || null,
+  }
+  return cachedFiat
+}
+
+/** For payment routes: the fiat deps when escrow funding is switched on, otherwise null. */
+export const fiatDepsOrNull = () => (fiatConfigured() ? buildFiatDeps() : null)

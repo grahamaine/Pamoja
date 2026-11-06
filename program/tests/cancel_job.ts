@@ -31,7 +31,7 @@ describe("cancel", () => {
 
   const createJob = (id: BN) =>
     program.methods
-      .createJob(id, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 3600))
+      .createJob(id, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 3600), new BN(3600))
       .rpc();
 
   before(async () => {

@@ -37,8 +37,10 @@ generates a new one and the program ID changes:
 cp target/deploy/counter_program-keypair.json target/deploy/pamoja-keypair.json
 anchor keys list   # must print 9dLzUWtKppSVHsBBAAea7nqhWUy2pzY3E19PrnGdP2Q4
 ```
-Existing jobs keep working after the upgrade: the `Job` account layout is unchanged. Vaults of jobs
-released or refunded before the upgrade stay open (empty); that only affects devnet test rent.
+**Upgrading to the dispute-window version (Nov 2026).** The `Job` account grew from 174 to 190 bytes and
+`create_job` takes a new `dispute_window` argument. Jobs created by the earlier program can no longer be
+read: the dashboard lists only 190-byte accounts, so they disappear (devnet test jobs only; their rent
+stays locked). Deploy the program and the frontend together, as above; the site sends the new argument.
 
 `Anchor.toml` is set to `localnet` so tests run on a free local validator:
 ```bash

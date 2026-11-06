@@ -45,13 +45,56 @@ server environment variables** (no `VITE_` prefix, never committed). See `fronte
 The MTN sandbox approves every payment on its own (no prompt reaches a real phone) and only accepts EUR.
 Pesapal answers its payment notifications (IPN) with the acknowledgement it expects, so it does not retry.
 
-## Important limits of the current design
+## Mobile money and card payments fund the escrow
 
-- The widget uses a demo job reference and an amount typed by the user. In production the amount and
-  job must come from the on-chain `Job`, never from the browser.
-- Collecting UGX through mobile money does not by itself move USDC into the escrow vault. A server
-  step (treasury wallet funding `fund_job` after a confirmed payment) is still to be built, along with
-  webhook verification and idempotency so a payment is credited only once.
+With `TREASURY_SECRET_KEY` set, a mobile money or card payment locks real escrow, and the customer needs
+no wallet:
+
+1. The customer picks the service, enters the provider's wallet address, amount (UGX), deadline,
+   dispute window and phone number, and pays with MTN, Airtel or Pesapal.
+2. Before asking for the money, the server checks that the **treasury** wallet holds enough USDC and SOL
+   to lock it. If not, it refuses, so nobody pays for a job that cannot be funded.
+3. When the payment provider itself reports the payment successful (the server asks MTN, Airtel or
+   Pesapal; it never trusts the browser), the treasury creates the job as its on-chain customer and
+   locks `amount ÷ UGX_PER_USDC` USDC in the vault, confirmed by the Pamoja service.
+4. The customer gets the usual SMS code, with a link to manage the booking.
+5. The code is the customer's key: give it to the provider to pay them; or, on the booking page,
+   dispute a delivery or reclaim the money after the deadline. The treasury signs those steps for them
+   once the code checks out.
+
+**Paid once, never twice.** The job id is derived from the payment id, so status polling, Pesapal's IPN
+and retries all end at the same job; a short lock stops two calls funding at the same moment, and the
+code is texted only once.
+
+**Refunds.** A refund (deadline passed, or a dispute decided for the customer) returns the USDC to the
+treasury on-chain and records the amount as owed to the customer's phone number (`refund-owed:<job>`
+in the store), and the customer gets an SMS. Paying it back by mobile money (MTN/Airtel disbursement)
+is still done by hand.
+
+**Deciding disputes.** The Pamoja team decides with one call:
+```bash
+curl -X POST https://pamoja-solana.vercel.app/api/escrow/resolve \
+  -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"job":"<job address>","outcome":"provider"}'    # or "customer"
+```
+
+**Settings (server only):**
+
+| Variable | What |
+|---|---|
+| `TREASURY_SECRET_KEY` | Keypair JSON of the treasury wallet. Must not be the attestor. Fund it with devnet SOL (about 0.02 per job) and devnet USDC from faucet.circle.com. |
+| `UGX_PER_USDC` | Conversion rate for the amount locked (default 3700). |
+| `ADMIN_TOKEN` | Long random string for `/api/escrow/resolve`. |
+| `STABLECOIN_MINT` | Optional; defaults to Circle's devnet USDC. |
+
+`/api/confirm/status` reports `fiatReady`, the treasury address and its SOL and USDC balances. Without
+`TREASURY_SECRET_KEY` the Pay tab falls back to plain payments and says they are not linked to escrow.
+
+## Limits of the current design
+
+- The conversion rate is a fixed setting, not a live price.
+- Refunds of mobile money and card payments are recorded and paid back by hand.
+- The MTN sandbox only uses EUR, so the amount is a test value there.
 - Add rate limiting before going live, and keep payment secrets out of logs.
 
 ## Sandbox setup and testing

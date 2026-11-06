@@ -7,7 +7,8 @@ use crate::{Job, JobStatus, JOB_SEED, VAULT_SEED};
 
 #[derive(Accounts)]
 pub struct Release<'info> {
-    /// The confirmation service. It signs only after checking the customer's SMS code off-chain.
+    /// The confirmation service. It signs only after checking the customer's SMS code off-chain,
+    /// or after deciding a dispute in the provider's favour.
     pub attestor: Signer<'info>,
 
     #[account(
@@ -49,12 +50,17 @@ pub struct Release<'info> {
 }
 
 pub fn handler(ctx: Context<Release>) -> Result<()> {
-    require!(ctx.accounts.job.status == JobStatus::Funded, ErrorCode::WrongStatus);
-    // Release is only possible up to the deadline; after it, the money belongs to the refund path.
-    require!(
-        Clock::get()?.unix_timestamp <= ctx.accounts.job.deadline,
-        ErrorCode::DeadlinePassed
-    );
+    match ctx.accounts.job.status {
+        // Release is only possible up to the deadline; after it, the money belongs to the refund path.
+        JobStatus::Funded => require!(
+            Clock::get()?.unix_timestamp <= ctx.accounts.job.deadline,
+            ErrorCode::DeadlinePassed
+        ),
+        // Once the provider has marked the job delivered the refund path is closed, so the
+        // customer's code (Delivered) or the attestor's ruling (Disputed) can pay at any time.
+        JobStatus::Delivered | JobStatus::Disputed => {}
+        _ => return err!(ErrorCode::WrongStatus),
+    }
 
     let a = &ctx.accounts;
     pay_out_and_close(

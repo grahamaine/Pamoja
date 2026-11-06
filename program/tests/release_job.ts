@@ -52,7 +52,7 @@ describe("release", () => {
 
     const deadline = new BN(Math.floor(Date.now() / 1000) + 3600);
     await program.methods
-      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline)
+      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline, new BN(3600))
       .rpc();
     await program.methods
       .fundJob()
@@ -108,7 +108,7 @@ describe("release", () => {
     );
     const [lateVault] = anchor.web3.PublicKey.findProgramAddressSync([Buffer.from("vault"), lateJob.toBuffer()], program.programId);
     await program.methods
-      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 4))
+      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 4), new BN(3600))
       .rpc();
     await program.methods
       .fundJob()

@@ -16,6 +16,7 @@ declare_id!("9dLzUWtKppSVHsBBAAea7nqhWUy2pzY3E19PrnGdP2Q4");
 pub mod pamoja {
     use super::*;
 
+    #[allow(clippy::too_many_arguments)]
     pub fn create_job(
         ctx: Context<CreateJob>,
         job_id: u64,
@@ -25,8 +26,9 @@ pub mod pamoja {
         reference: String,
         attestor: Pubkey,
         deadline: i64,
+        dispute_window: i64,
     ) -> Result<()> {
-        create_job::handler(ctx, job_id, provider, mint, amount, reference, attestor, deadline)
+        create_job::handler(ctx, job_id, provider, mint, amount, reference, attestor, deadline, dispute_window)
     }
 
     pub fn fund_job(ctx: Context<FundJob>) -> Result<()> {
@@ -47,5 +49,25 @@ pub mod pamoja {
 
     pub fn close_job(ctx: Context<CloseJob>) -> Result<()> {
         close_job::handler(ctx)
+    }
+
+    /// Provider: the work is done. Starts the customer's dispute window and closes the refund path.
+    pub fn mark_delivered(ctx: Context<MarkDelivered>) -> Result<()> {
+        mark_delivered::handler(ctx)
+    }
+
+    /// Customer: the work was not done. Freezes the job until the attestor decides.
+    pub fn dispute(ctx: Context<Dispute>) -> Result<()> {
+        dispute::handler(ctx)
+    }
+
+    /// Provider: the dispute window passed with no dispute, so take the payment.
+    pub fn claim(ctx: Context<Claim>) -> Result<()> {
+        claim::handler(ctx)
+    }
+
+    /// Attestor: a dispute was decided in the customer's favour; return the payment.
+    pub fn resolve_refund(ctx: Context<ResolveRefund>) -> Result<()> {
+        resolve_refund::handler(ctx)
     }
 }

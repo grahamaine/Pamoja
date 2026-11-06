@@ -1,14 +1,22 @@
 pub mod cancel;
+pub mod claim;
 pub mod close_job;
 pub mod create_job;
+pub mod dispute;
 pub mod fund_job;
+pub mod mark_delivered;
 pub mod refund;
 pub mod release;
+pub mod resolve_refund;
 mod vault;
 
 pub use cancel::*;
+pub use claim::*;
 pub use close_job::*;
 pub use create_job::*;
+pub use dispute::*;
 pub use fund_job::*;
+pub use mark_delivered::*;
 pub use refund::*;
 pub use release::*;
+pub use resolve_refund::*;

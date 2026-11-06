@@ -30,7 +30,7 @@ await mintTo(connection, customer, mint, custAta, customer, 20_000_000)
 async function newJob(id: number, secs: number) {
   const jobId = new BN(id)
   const [job] = PublicKey.findProgramAddressSync([Buffer.from('job'), customer.publicKey.toBuffer(), jobId.toArrayLike(Buffer, 'le', 8)], program.programId)
-  await program.methods.createJob(jobId, providerKp.publicKey, mint, new BN(5_000_000), 'HAIR', attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + secs)).rpc()
+  await program.methods.createJob(jobId, providerKp.publicKey, mint, new BN(5_000_000), 'HAIR', attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + secs), new BN(3600)).rpc()
   await program.methods.fundJob().accountsPartial({ job, mint, customerTokenAccount: custAta, tokenProgram: TOKEN_PROGRAM_ID }).rpc()
   return job.toBase58()
 }

@@ -53,7 +53,7 @@ describe("refund", () => {
     // a deadline just a few seconds away, so the test can wait for it to pass
     const deadline = new BN(Math.floor(Date.now() / 1000) + 5);
     await program.methods
-      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline)
+      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline, new BN(3600))
       .rpc();
     await program.methods
       .fundJob()

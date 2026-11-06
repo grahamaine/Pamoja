@@ -24,3 +24,11 @@
 .fields select { padding: .75rem .9rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text-h); font: 400 1rem var(--font); width: 100%; }
 .crypto-note { color: var(--muted); font-size: .88rem; margin: 0 0 1rem; }
 .crypto-note a, .pay-msg a { color: var(--teal); }
+
+.booking { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+.booking summary { cursor: pointer; color: var(--text-h); font-weight: 500; margin-bottom: 1rem; }
+.booking .pay { margin-bottom: .6rem; }
+.booking-info { margin-top: 1rem; }
+.booking-info p { margin: 0 0 .8rem; }
+.booking-info a { color: var(--teal); }
+.booking .chip { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .78rem; border: 1px solid var(--border); }

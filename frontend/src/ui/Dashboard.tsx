@@ -4,12 +4,17 @@ import { useEscrow } from '../useEscrow'
 import { useConfirmService } from '../useConfirmService'
 import { ConfirmBox } from './ConfirmBox'
 import {
-  canFund, canRefund, canRelease, cancelJob, closeJob, fromBaseUnits, fundJob, isFinal, refundJob, releaseJob, trustOf, type JobView,
+  canClaim, canDispute, canFund, canMarkDelivered, canRefund, canRelease, cancelJob, claimJob, closeJob, disputeEnds, disputeJob,
+  fromBaseUnits, fundJob, isFinal, isOpen, markDelivered, refundJob, releaseJob, resolveRefundJob, trustOf, type JobView,
 } from '../lib/escrow'
+import { notifyDelivered } from '../lib/confirmApi'
 import { explorer, PROGRAM_ID, STABLE_DECIMALS, STABLE_MINT, STABLE_SYMBOL } from '../lib/config'
 import './Dashboard.css'
 
-const LABEL: Record<string, string> = { created: 'Awaiting payment', funded: 'Locked', released: 'Released', cancelled: 'Cancelled', refunded: 'Refunded' }
+const LABEL: Record<string, string> = {
+  created: 'Awaiting payment', funded: 'Locked', delivered: 'Delivered', disputed: 'Disputed',
+  released: 'Released', cancelled: 'Cancelled', refunded: 'Refunded',
+}
 
 const LEVELS = [
   { name: 'Bronze', from: 0 },
@@ -56,10 +61,10 @@ export function Dashboard() {
   const { connected, me, program, jobs, loading, error, busy, notes, refresh, act } = useEscrow()
   const service = useConfirmService()
 
-  const locked = jobs.filter((j) => j.status === 'funded').reduce((s, j) => s + Number(fromBaseUnits(j.amount, STABLE_DECIMALS)), 0)
+  const locked = jobs.filter(isOpen).reduce((s, j) => s + Number(fromBaseUnits(j.amount, STABLE_DECIMALS)), 0)
   const released = jobs.filter((j) => j.status === 'released')
   const paidOut = released.reduce((s, j) => s + Number(fromBaseUnits(j.amount, STABLE_DECIMALS)), 0)
-  const open = jobs.filter((j) => j.status === 'created' || j.status === 'funded').length
+  const open = jobs.filter((j) => j.status === 'created' || isOpen(j)).length
   const completedAsProvider = me ? released.filter((j) => j.provider.equals(me)).length : 0
   const { current, next, progress } = levelFor(connected ? completedAsProvider : 1)
 
@@ -94,7 +99,25 @@ export function Dashboard() {
       btns.push(<button key="cancel" className="mini" disabled={disabled} onClick={() => act(key, () => cancelJob(program, j))}>Cancel</button>)
     }
     if (isAttestor && canRelease(j, now)) {
-      btns.push(<button key="release" className="mini primary" disabled={disabled} onClick={() => act(key, () => releaseJob(program, me, j))}>Confirm &amp; pay provider</button>)
+      btns.push(<button key="release" className="mini primary" disabled={disabled} onClick={() => act(key, () => releaseJob(program, me, j))}>{j.status === 'disputed' ? 'Decide: pay provider' : 'Confirm & pay provider'}</button>)
+    }
+    if (isAttestor && j.status === 'disputed') {
+      btns.push(<button key="resolve-refund" className="mini" disabled={disabled} onClick={() => act(key, () => resolveRefundJob(program, me, j))}>Decide: refund customer</button>)
+    }
+    const isProvider = j.provider.equals(me)
+    if (isProvider && canMarkDelivered(j, now)) {
+      btns.push(
+        <button key="delivered" className="mini primary" disabled={disabled} title="Tell the customer the work is done. They then have a set time to dispute, or you can claim the payment."
+          onClick={() => act(key, async () => { await markDelivered(program, me, j); notifyDelivered(key).catch(() => {}) })}>
+          Mark delivered
+        </button>,
+      )
+    }
+    if (isProvider && canClaim(j, now)) {
+      btns.push(<button key="claim" className="mini primary" disabled={disabled} onClick={() => act(key, () => claimJob(program, me, j))}>Claim payment</button>)
+    }
+    if (isCustomer && canDispute(j, now)) {
+      btns.push(<button key="dispute" className="mini" disabled={disabled} title="The work was not done. Pamoja will review and decide." onClick={() => act(key, () => disputeJob(program, me, j))}>Dispute</button>)
     }
     if (isCustomer && j.status === 'funded') {
       const late = canRefund(j, now)
@@ -107,12 +130,20 @@ export function Dashboard() {
     if (isCustomer && isFinal(j)) {
       btns.push(<button key="close" className="mini" disabled={disabled} title="Deletes the finished job and returns its rent (about 0.002 SOL) to you" onClick={() => act(key, () => closeJob(program, me, j))}>Close &amp; reclaim rent</button>)
     }
-    const isProvider = j.provider.equals(me)
     const viaService = service.ready && service.attestor !== null && j.attestor.toBase58() === service.attestor && canRelease(j, now)
     return (
       <>
         {isProvider && !isCustomer && (j.status === 'created' || j.status === 'funded') && <TrustBadge j={j} pamojaAttestor={service.attestor} />}
         {isProvider && j.status === 'funded' && !canRelease(j, now) && <small className="note">The deadline has passed, so this payment can no longer be released to you.</small>}
+        {j.status === 'delivered' && !canClaim(j, now) && (
+          <small className="note">
+            {isCustomer
+              ? `The provider says the work is done. If it is not, dispute before ${when(disputeEnds(j))}; after that the provider can claim the payment.`
+              : `Marked delivered. If the customer does not dispute, you can claim the payment after ${when(disputeEnds(j))}.`}
+          </small>
+        )}
+        {j.status === 'delivered' && canClaim(j, now) && isCustomer && <small className="note">The dispute window has closed; the provider can now claim the payment.</small>}
+        {j.status === 'disputed' && <small className="note">{isAttestor ? 'Disputed: review the job and decide who gets the payment.' : 'Disputed. The Pamoja team is reviewing it and will either pay the provider or refund the customer.'}</small>}
         {viaService && isCustomer && <ConfirmBox job={key} role="customer" onDone={refresh} />}
         {viaService && isProvider && <ConfirmBox job={key} role="provider" onDone={refresh} />}
         <div className="row-actions">{btns}</div>
@@ -163,7 +194,7 @@ export function Dashboard() {
                         <td data-label="Job"><a href={explorer(j.address.toBase58())} target="_blank" rel="noreferrer">{short(j.address.toBase58())}</a></td>
                         <td data-label="Service">
                           {j.reference}
-                          <small>{me && j.customer.equals(me) ? `to ${short(j.provider.toBase58())}` : `from ${short(j.customer.toBase58())}`} · due {when(j.deadline.toNumber())}</small>
+                          <small>{me && j.customer.equals(me) ? `to ${short(j.provider.toBase58())}` : (service.treasury === j.customer.toBase58() ? 'from a mobile money / card customer' : `from ${short(j.customer.toBase58())}`)} · due {when(j.deadline.toNumber())}</small>
                           {actions(j)}
                         </td>
                         <td data-label="Amount">{money(j)}</td>

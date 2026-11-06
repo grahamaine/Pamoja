@@ -22,4 +22,12 @@ pub enum ErrorCode {
     DeadlinePassed,
     #[msg("The job is still open and cannot be closed")]
     JobNotFinished,
+    #[msg("Dispute window must be between 1 minute and 7 days")]
+    InvalidDisputeWindow,
+    #[msg("Only the provider can do this")]
+    NotProvider,
+    #[msg("The customer can still dispute this delivery")]
+    DisputeWindowOpen,
+    #[msg("The dispute window for this delivery has closed")]
+    DisputeWindowClosed,
 }

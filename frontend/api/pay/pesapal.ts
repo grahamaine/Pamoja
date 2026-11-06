@@ -1,9 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import { env, HttpError, json, parseAmount, parseRef, requireMethod, route } from '../_lib/common.js'
+import { fundOrderSafely, prepareOrder, saveOrder } from '../_lib/fiat.js'
+import { buildFiatDeps, fiatConfigured, fiatDepsOrNull } from '../_lib/services.js'
 
 // Pesapal API 3.0: hosted checkout for cards, mobile money and bank.
-// POST /api/pay/pesapal                      { amount, jobRef, email?, phone? } -> { redirectUrl, orderTrackingId }
-// GET  /api/pay/pesapal?tracking=…           -> { status }
+// POST /api/pay/pesapal                      { amount, jobRef, email?, phone?, provider?, reference?, deadlineHours?, disputeWindow? }
+//                                            -> { redirectUrl, orderTrackingId }
+// GET  /api/pay/pesapal?tracking=…           -> { status, escrow?, job? }
+// With a provider address the payment funds an escrow job (see api/_lib/fiat.ts); a phone number is then required for the SMS code.
 // POST /api/pay/pesapal?action=register-ipn  one-off setup; returns ipn_id to store as PESAPAL_IPN_ID
 // Pesapal also calls this URL (GET) as the IPN, with OrderTrackingId and OrderMerchantReference.
 
@@ -35,6 +39,14 @@ async function status(tracking: string) {
   return { status: mapped, raw: s, jobRef: d.merchant_reference }
 }
 
+/** With a provider address in the request, this payment funds an escrow job once it succeeds. */
+async function escrowOrder(body: any) {
+  if (!body?.provider) return null
+  if (!fiatConfigured()) throw new HttpError(503, 'Escrow for mobile money is not switched on yet')
+  const d = buildFiatDeps()
+  return { d, order: await prepareOrder(d, body) }
+}
+
 export default route(async (req) => {
   requireMethod(req, 'POST', 'GET')
   const base = env('PUBLIC_APP_URL')
@@ -43,6 +55,8 @@ export default route(async (req) => {
     const tracking = String(req.query.tracking ?? req.query.OrderTrackingId ?? '')
     if (!/^[A-Za-z0-9-]{8,64}$/.test(tracking)) throw new HttpError(400, 'Invalid tracking id')
     const result = await status(tracking)
+    // The IPN and the customer's status checks both land here; funding is safe to repeat.
+    const escrow = result.status === 'SUCCESSFUL' ? await fundOrderSafely(fiatDepsOrNull, 'pesapal', tracking) : {}
     // Pesapal's IPN call carries OrderNotificationType and expects this acknowledgement, or it retries.
     if (req.query.OrderNotificationType) {
       return {
@@ -52,7 +66,7 @@ export default route(async (req) => {
         status: 200,
       }
     }
-    return result
+    return { ...result, ...escrow }
   }
 
   if (req.query.action === 'register-ipn') {
@@ -71,6 +85,7 @@ export default route(async (req) => {
   const email = String(req.body?.email ?? '').trim()
   const phone = String(req.body?.phone ?? '').replace(/[^\d+]/g, '')
   if (!email && !phone) throw new HttpError(400, 'Provide an email or phone number')
+  const escrow = await escrowOrder(req.body)
 
   const t = await token()
   const r = await fetch(`${env('PESAPAL_BASE_URL')}/api/Transactions/SubmitOrderRequest`, {
@@ -87,5 +102,6 @@ export default route(async (req) => {
     }),
   })
   const d = await json<{ redirect_url: string; order_tracking_id: string }>(r, 'Pesapal order')
+  if (escrow) await saveOrder(escrow.d, 'pesapal', d.order_tracking_id, escrow.order)
   return { redirectUrl: d.redirect_url, orderTrackingId: d.order_tracking_id }
 })

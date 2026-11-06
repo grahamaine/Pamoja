@@ -5,7 +5,7 @@ import { CircleCheck, CircleX, Loader2 } from 'lucide-react'
 import { usePamojaProgram } from '../useProgram'
 import { friendly } from '../useEscrow'
 import { useConfirmService } from '../useConfirmService'
-import { createAndFundJob, toBaseUnits, type EscrowProgram } from '../lib/escrow'
+import { createAndFundJob, DISPUTE_WINDOWS, toBaseUnits, type EscrowProgram } from '../lib/escrow'
 import { ATTESTOR_ADDRESS, explorer, STABLE_DECIMALS, STABLE_MINT, STABLE_SYMBOL } from '../lib/config'
 import { CATEGORIES } from './Services'
 
@@ -17,6 +17,7 @@ export function CryptoPay() {
   const [provider, setProvider] = useState('')
   const [amount, setAmount] = useState('5')
   const [hours, setHours] = useState('24')
+  const [disputeWin, setDisputeWin] = useState(String(DISPUTE_WINDOWS[0].seconds))
   const [phase, setPhase] = useState<'idle' | 'sending' | 'done' | 'failed'>('idle')
   const [message, setMessage] = useState('')
   const [job, setJob] = useState('')
@@ -44,6 +45,7 @@ export function CryptoPay() {
         reference,
         attestor,
         deadline: new BN(Math.floor(Date.now() / 1000) + Math.round(h * 3600)),
+        disputeWindow: new BN(Number(disputeWin)),
       })
       setJob(address.toBase58())
       setPhase('done')
@@ -73,10 +75,16 @@ export function CryptoPay() {
         <label>Deadline (hours from now)
           <input inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, ''))} disabled={busy} />
         </label>
+        <label>Time to dispute a delivery
+          <select value={disputeWin} onChange={(e) => setDisputeWin(e.target.value)} disabled={busy}>
+            {DISPUTE_WINDOWS.map((w) => <option key={w.seconds} value={w.seconds}>{w.label}</option>)}
+          </select>
+        </label>
       </div>
 
       <p className="crypto-note">
-        The provider must be confirmed before the deadline; after it, only you can take the money back.{' '}
+        The provider must be confirmed or mark the job delivered before the deadline; otherwise you can take the money back after it.
+        Once they mark it delivered, you have the time above to dispute, or they are paid automatically.{' '}
         You need devnet SOL for fees and test {STABLE_SYMBOL} in this wallet:{' '}
         <a href="https://faucet.solana.com" target="_blank" rel="noreferrer">SOL faucet</a> ·{' '}
         <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">USDC faucet</a> (choose Solana Devnet).

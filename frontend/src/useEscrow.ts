@@ -56,8 +56,13 @@ export function friendly(e: unknown): string {
   if (/DeadlinePassed/.test(m)) return 'The deadline has passed. Only a refund to the customer is possible now.'
   if (/WrongStatus/.test(m)) return 'This job is not in the right state for that action.'
   if (/JobNotFinished/.test(m)) return 'Only finished jobs (paid out, cancelled or refunded) can be closed.'
+  if (/InstructionDidNotDeserialize|AccountDidNotDeserialize/.test(m)) return 'The live program is an older version. Deploy the latest program and website together.'
   if (/NotAttestor/.test(m)) return 'Only the confirmation service for this job can release the payment.'
   if (/NotCustomer/.test(m)) return 'Only the customer who created this job can do that.'
+  if (/NotProvider/.test(m)) return 'Only the provider of this job can do that.'
+  if (/DisputeWindowOpen/.test(m)) return 'The customer can still dispute this delivery. Try again after the dispute window ends.'
+  if (/DisputeWindowClosed/.test(m)) return 'The time to dispute this delivery has passed.'
+  if (/InvalidDisputeWindow/.test(m)) return 'Choose a dispute window between 1 minute and 7 days.'
   if (/WrongMint/.test(m)) return 'That token does not match this job.'
   if (/AccountNotInitialized|could not find account/i.test(m)) return 'A required token account is missing. Does this wallet hold the test USDC?'
   return m.length > 160 ? `${m.slice(0, 160)}…` : m

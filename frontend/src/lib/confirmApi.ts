@@ -10,7 +10,8 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T
 }
 
-export const getServiceStatus = () => call<{ ready: boolean; attestor: string | null }>('/api/confirm/status')
+export const getServiceStatus = () =>
+  call<{ ready: boolean; attestor: string | null; treasury?: string | null; fiatReady?: boolean }>('/api/confirm/status')
 
 const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes))
 
@@ -21,3 +22,7 @@ export async function requestCode(job: string, phone: string, signMessage: (m: U
 
 export const submitCode = (job: string, code: string) =>
   call<{ released: boolean; signature: string }>('/api/confirm/release', { method: 'POST', body: JSON.stringify({ job, code }) })
+
+/** After the provider marks a job delivered: texts a mobile money customer that their dispute window has started. */
+export const notifyDelivered = (job: string) =>
+  call<{ notified: boolean }>('/api/escrow/delivered', { method: 'POST', body: JSON.stringify({ job }) })

@@ -45,7 +45,7 @@ describe("fund_job", () => {
 
     const deadline = new BN(Math.floor(Date.now() / 1000) + 3600);
     await program.methods
-      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline)
+      .createJob(jobId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, deadline, new BN(3600))
       .rpc();
   });
 
@@ -86,7 +86,7 @@ describe("fund_job", () => {
       program.programId
     );
     await program.methods
-      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 3))
+      .createJob(lateId, providerWallet.publicKey, mint, new BN(AMOUNT), "HAIR", attestor.publicKey, new BN(Math.floor(Date.now() / 1000) + 3), new BN(3600))
       .rpc();
     await new Promise((r) => setTimeout(r, 6000));
 
