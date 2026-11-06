@@ -1,0 +1,30 @@
+{
+  "name": "Pamoja — Pay when the service is done",
+  "short_name": "Pamoja",
+  "description": "Escrow for local service businesses and suppliers in East Africa, built on Solana. Pay by mobile money, card or crypto; the provider is paid when the job is done.",
+  "id": "/",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#070d10",
+  "theme_color": "#070d10",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["finance", "business", "shopping"],
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Pay for a job", "short_name": "Pay", "url": "/?source=app#pay", "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "Business dashboard", "short_name": "Business", "url": "/?source=app#dashboard", "icons": [{ "src": "/favicon-192.png", "sizes": "192x192" }] }
+  ],
+  "screenshots": [
+    { "src": "/screenshots/wide.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "Pamoja on desktop" },
+    { "src": "/screenshots/narrow.png", "sizes": "540x1170", "type": "image/png", "form_factor": "narrow", "label": "Pamoja on mobile" }
+  ]
+}

@@ -101,8 +101,9 @@
   .profile-row { flex-wrap: wrap; align-items: flex-end; margin-top: -48px; }
   .avatar { width: 96px; height: 96px; border-radius: 22px; }
   .avatar img { border-radius: 18px; }
-  .profile-actions { width: 100%; }
-  .profile-actions .btn { flex: 1; }
+  .profile-actions { width: 100%; flex-wrap: wrap; }
+  .profile-actions .btn { flex: 1 1 auto; }
+  .profile-actions .btn-primary { flex-basis: 100%; order: -1; }
   .tabbar { gap: 1.3rem; }
 }
 @media (max-width: 480px) {

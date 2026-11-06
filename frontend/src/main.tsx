@@ -8,6 +8,11 @@ import '@solana/wallet-adapter-react-ui/styles.css'
 import './index.css'
 import App from './App.tsx'
 import { buildWallets } from './wallets'
+import { captureInstallPrompt, registerServiceWorker } from './lib/install'
+
+// Before React renders: the browser may offer the install prompt right after load.
+captureInstallPrompt()
+registerServiceWorker()
 
 const wallets = buildWallets()
 

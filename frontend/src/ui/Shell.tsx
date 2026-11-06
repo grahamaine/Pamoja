@@ -3,6 +3,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { BadgeCheck, BookOpen, ChevronLeft, ChevronRight, FlaskConical, Globe, House, BriefcaseBusiness, LayoutGrid, Link2, Menu, Search, Share2, Wallet, X, type LucideIcon } from 'lucide-react'
 import { CATEGORIES } from './Services'
 import logo from '../assets/logo-mark.png'
+import { InstallButton } from './InstallApp'
 import './Shell.css'
 
 export type TabId = 'home' | 'services' | 'dashboard' | 'pay' | 'devnet'
@@ -85,6 +86,7 @@ export function TopBar({ tab, onTab, query, onQuery }: { tab: TabId; onTab: (t: 
             <button key={n.label} className={tab === n.tab ? 'on' : ''} onClick={() => { onTab(n.tab!); setOpen(false) }}>{n.label}</button>
           ),
         )}
+        <InstallButton className="install-link" />
       </nav>
 
       <div className="top-actions">
@@ -173,6 +175,7 @@ export function ProfileHeader({ onTab }: { onTab: (t: TabId) => void }) {
         </div>
 
         <div className="profile-actions">
+          <InstallButton />
           <button className="btn btn-outline" onClick={share}><Share2 size={17} /> {note || 'Share'}</button>
           <button className="btn btn-primary" onClick={() => onTab('pay')}><Wallet size={17} /> Start a payment</button>
         </div>

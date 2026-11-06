@@ -34,6 +34,7 @@ More detail: [docs/how-it-works.md](docs/how-it-works.md).
 - Wallet connection: Phantom, Solflare and WalletConnect.
 - Mobile money and card that fund the escrow: once MTN, Airtel or Pesapal confirms the payment, the Pamoja treasury locks the same value in USDC on-chain and the customer gets the SMS code. No wallet needed; a booking page lets them dispute or reclaim with the code. MTN MoMo and Pesapal (card, bank) are connected to their sandboxes; Airtel Money is built and waiting for sandbox keys. See [docs/payments.md](docs/payments.md).
 - Delivered step and dispute window: providers mark work done and get paid automatically if the customer does not dispute in time.
+- Installable app on phones and computers (PWA): an **Install app** button uses the browser's own install prompt on Chrome, Edge and Android, and shows Add to Home Screen steps on iPhone, iPad and Mac Safari. Opens full-screen with its own icon and still shows the app shell on a weak connection.
 - Supported-chains logo slideshow, mobile-first layout, Oswald typography.
 
 ## Tech

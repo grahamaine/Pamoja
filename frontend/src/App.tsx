@@ -19,7 +19,7 @@ const STEPS: { n: string; title: string; text: string; Icon: LucideIcon }[] = [
 const FEATURES: { title: string; text: string; Icon: LucideIcon }[] = [
   { Icon: Smartphone, title: 'Works on any phone', text: 'No QR codes. A 4–6 digit code by SMS or WhatsApp is all a customer needs.' },
   { Icon: Wallet, title: 'Three ways to pay', text: 'Crypto (USDC), mobile money or bank transfer, all settled into one escrow.' },
-  { Icon: ShieldCheck, title: 'No-show protection', text: 'Every job has a deadline. Until it, the provider can be paid; after it, the customer can take the money back.' },
+  { Icon: ShieldCheck, title: 'Fair to both sides', text: 'If the work is not done by the deadline, the customer takes the money back. If the provider marks it done, the customer has a set time to dispute, or the provider is paid.' },
   { Icon: Store, title: 'Built for local business', text: 'Salons, repairs, suppliers and event services across East Africa.' },
 ]
 

@@ -1,0 +1,13 @@
+.install-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: end center; padding: 1rem; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); }
+@media (min-width: 640px) { .install-backdrop { place-items: center; } }
+.install-sheet { position: relative; width: min(100%, 420px); padding: 1.6rem 1.4rem 1.2rem; border-radius: 18px; background: var(--surface, #0d1619); border: 1px solid var(--border); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.install-sheet h3 { margin: .8rem 0 .6rem; color: var(--text-h); font-size: 1.25rem; text-transform: none; }
+.install-sheet ol { margin: 0; padding-left: 1.2rem; display: grid; gap: .6rem; line-height: 1.5; }
+.install-sheet strong { color: var(--text-h); font-weight: 500; }
+.install-sheet .inline { vertical-align: -3px; color: var(--teal); }
+.install-icon { width: 56px; height: 56px; border-radius: 14px; }
+.install-close { position: absolute; top: .7rem; right: .7rem; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: none; color: var(--muted); cursor: pointer; }
+.install-close:hover { color: var(--text-h); }
+.install-note { margin: 1rem 0 0; color: var(--muted); font-size: .85rem; }
+.top-links .install-link { display: none; }
+@media (max-width: 900px) { .top-links .install-link { display: inline-flex; align-items: center; gap: .4rem; } }
