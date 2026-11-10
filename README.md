@@ -12,8 +12,8 @@
 
 - **Tracks:** Best Consumer App on Solana, and the Aurora Intents bounty.
 - **Live demo:** https://pamoja-solana.vercel.app (escrow on Solana devnet; Pay from any chain on mainnet).
-- **Demo video:** [add link]
-- **Slides:** [add link]
+- **Demo video:** 
+- **Slides:** (https://docs.google.com/presentation/d/1jfkDif7jT11Fm33jXfX_qpHeKsbBg9M96sxBOX65a_I/edit?usp=sharing)
 
 ## How it works
 
