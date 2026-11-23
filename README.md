@@ -14,6 +14,9 @@
 - **Live demo:** https://pamoja-solana.vercel.app (escrow on Solana devnet; Pay from any chain on mainnet).
 - **Demo video:** 
 - **Slides:** (https://docs.google.com/presentation/d/1jfkDif7jT11Fm33jXfX_qpHeKsbBg9M96sxBOX65a_I/edit?usp=sharing)
+- **Certificate:** Participant, Encode x Solana Hackathon 2026 (12 October – 16 November 2026), issued by Encode Club with the support of the Solana Foundation.
+
+<p align="center"><img src="docs/encode-solana-hackathon-2026-certificate.png" alt="Encode x Solana Hackathon 2026 participant certificate for Graham Byagaba, project Pamoja" width="600"></p>
 
 ## How it works
 
